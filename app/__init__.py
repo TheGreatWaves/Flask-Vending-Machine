@@ -21,4 +21,8 @@ def create_app(config_class=Config):
     app.register_blueprint(main_bp)
     app.register_blueprint(machine_bp)
 
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
     return app
