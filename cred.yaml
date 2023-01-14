@@ -1,4 +1,0 @@
-mysql_host : '127.0.0.1:13310'
-mysql_user : 'root'
-mysql_password : 'vendingpass'
-mysql_db : 'vendingdb'
