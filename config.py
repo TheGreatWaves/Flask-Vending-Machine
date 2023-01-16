@@ -8,7 +8,7 @@ mysql_host = "127.0.0.1:13310"
 mysql_db = "vendingdb"
 
 """
-The Config class contains configuration details of the app
+Configuration details of the flask app
 """
 class Config:
     SQLALCHEMY_DATABASE_URI = f'mysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}'
