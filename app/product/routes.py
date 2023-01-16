@@ -5,18 +5,24 @@ from app.models.product import Product
 
 @bp.route("/create/<name>", methods=['POST'])
 def create_product(name):
-    new_product = Product(name)
-    db.session.add(new_product)
-    db.session.commit()
+    
+    new_product, message = Product.make(name, 100.0)
+
+    if new_product:
+        db.session.add(new_product)
+        db.session.commit()
+
     return jsonify(
-        Message=f"Successfully added entry for product: {name}"
+        Message=message
     )
 
-@bp.route("/get/<name>", methods=['GET'])
-def get_product(name):
-    product = Product.query.filter_by(product_name=name).first()
+@bp.route("/get/<identifier>", methods=['GET'])
+def get_product(identifier):
+
+    product = Product.get(identifier)
 
     if product:
         return jsonify(product)
-    return jsonify(Error=f"Product with given name {name} not found!")
+
+    return jsonify(Error=f"Product not found!")
 

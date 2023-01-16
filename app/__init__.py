@@ -2,19 +2,7 @@ from flask import Flask
 from config import Config
 from app.extensions import db
 
-blueprints = []
-
-def add_blueprint(bp):
-    blueprints.append(bp)
-
-def register_blueprints(app: Flask):
-    print(f"Size: {len(blueprints)}")
-    for bp in blueprints:
-        app.register_blueprint(bp)
-
-
-# Creates a flask app with configurations
-# loaded from root/config.py
+# Config loaded from root/config.py
 def create_app(config_class=Config):
     app = Flask(__name__)
 
@@ -33,8 +21,9 @@ def create_app(config_class=Config):
     app.register_blueprint(machine_bp)
     app.register_blueprint(product_bp)
 
+    return app
+
+def reset_db(app):
     with app.app_context():
         db.drop_all()
         db.create_all()
-
-    return app
