@@ -11,5 +11,5 @@ mysql_db = "vendingdb"
 Configuration details of the flask app
 """
 class Config:
-    SQLALCHEMY_DATABASE_URI = f'mysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}'
+    SQLALCHEMY_DATABASE_URI = f'mysql://{ mysql_user }:{ mysql_password }@{ mysql_host }/{ mysql_db }'
     SQLALCHEMY_TRACK_MODIFICATIONS = False

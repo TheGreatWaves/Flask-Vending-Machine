@@ -5,10 +5,10 @@ from typing import List, Tuple, Optional
 
 @dataclass
 class Product( db.Model ):
+    # For serializing 
     product_id: int
     product_name: str
     product_price: float
-    machine_products: List[ MachineStock ]
 
     product_id = db.Column( 'product_id', db.Integer, primary_key = True, autoincrement=True )
     product_name = db.Column( db.String(20), unique=True, nullable=False)
@@ -19,29 +19,32 @@ class Product( db.Model ):
         self.product_name = name
         self.product_price = price
 
-    @classmethod
-    def findByID( cls, id ) -> Optional[ "Product" ]:
+    @staticmethod
+    def find_by_id( id ) -> Optional[ "Product" ]:
         return Product.query.get( id )
 
-    @classmethod
-    def findByName( cls, name ) -> Optional[ "Product" ]:
-        # Note: ilike the 'i' indicates case INSENSITIVE
-        return Product.query.filter( (Product.product_name == name) | (Product.product_name.ilike(f'%{ name }%')) ).first()
+    @staticmethod
+    def find_by_name( name ) -> Optional[ "Product" ]:
+        
+        exact_match = name == Product.product_name
+        similar_match = Product.product_name.ilike(f'%{ name }%') # ilike is case insensitive
 
-    @classmethod
-    def get( cls, identifier ) -> Optional[ "Product" ]:
+        return Product.query.filter( exact_match or similar_match ).first()
+
+    @staticmethod
+    def find_by_name_or_id( identifier: (int | str) ) -> Optional[ "Product" ]:
         if identifier.isdigit():
-            return Product.findByID( identifier )
+            return Product.find_by_id( identifier )
         else:
-            return Product.findByName( identifier )
+            return Product.find_by_name( identifier )
 
-    @classmethod
-    def make( cls, name, price ) -> Tuple[ Optional[ "Product" ], str ]:
+    @staticmethod
+    def make( name, price ) -> Tuple[ Optional[ "Product" ], str ]:
 
         if name.isdigit():
             return None, "The name cannot be a number."
         
-        if Product.findByName( name ):
+        if Product.find_by_name( name ):
             return None, "A product with the given name already exists."
 
         if price < 0.0:

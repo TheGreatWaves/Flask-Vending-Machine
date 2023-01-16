@@ -1,5 +1,5 @@
 """
-Extensions for the flask app
+Extensions for the flask app.
 """
 
 from flask_sqlalchemy import SQLAlchemy

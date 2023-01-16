@@ -1,8 +1,6 @@
 from app.main import bp
 from flask import jsonify
 
-@bp.route("/", methods=['GET'])
+@bp.route( "/", methods=['GET'] )
 def index():
-    return jsonify(
-        Message="Vending machine goes brr",
-    )
+    return jsonify( Message="Vending machine goes brr" )
