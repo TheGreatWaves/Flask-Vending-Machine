@@ -37,20 +37,20 @@ class MachineStock( db.Model ):
         return MachineStock.query.filter_by( machine_id=machine_id, product_id=product_id ).first()
 
     @staticmethod
-    def make( machine_id: int, product_identifier: ( int|str ), quantity: int ) -> Tuple[ OptStock, str ]:
+    def make( machine_id: int, product_id: ( int|str ), quantity: int ) -> Tuple[ OptStock, str ]:
         
         if vending_machine.Machine.find_by_id( machine_id ) is None:
             return None, f"No machine with id { machine_id } found."
 
-        target_product = product.Product.find_by_name_or_id( product_identifier )
+        target_product = product.Product.find_by_name_or_id( identifier=product_id, first=True )
         if target_product is None:
-            return None, f"No product with id/name { product_identifier } found."
+            return None, f"No product with id/name { product_id } found."
 
         if quantity <= 0:
             return None, f"Invalid quantity. ( n <= 0 )"
 
         # Prevent duplicate entry
-        if MachineStock.get( machine_id=machine_id, product_id=target_product.product_id, ):
+        if MachineStock.get( machine_id=machine_id, product_id=product_id, ):
             return None, f"An existing entry already exists for machine { machine_id } and product { target_product.product_id }"
 
         return MachineStock( 
@@ -88,10 +88,22 @@ class MachineStock( db.Model ):
         stock_information_list: MachineStock.ListOfStockInfo = []
 
         for stock_info in raw:
-            product_id = stock_info['product_id']
-            quantity = stock_info['quantity']
+            product_id = stock_info.get('product_id')
+            quantity = stock_info.get('quantity')
             stock_information_list.append( ( product_id, quantity ) )
 
         return stock_information_list
+
+    def remove_from_machine(self):
+        db.session.delete(self)
+
+    def decrease_stock(self):
+        self.quantity -= 1
+    
+    def add_stock(self):
+        self.quantity += 1
+
+    def out_of_stock(self) -> bool:
+        return self.quantity == 0
 
         
