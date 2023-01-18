@@ -1,7 +1,7 @@
 from app.extensions import db
 from dataclasses import dataclass
 from app.models.vending_machine_stock import MachineStock
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 
 @dataclass
 class Product( db.Model ):
@@ -20,11 +20,11 @@ class Product( db.Model ):
         self.product_price = price
 
     @staticmethod
-    def find_by_id( id ) -> Optional[ "Product" ]:
+    def find_by_id( id: int ) -> Optional[ "Product" ]:
         return Product.query.get( id )
 
     @staticmethod
-    def find_by_name( name ) -> Optional[ "Product" ]:
+    def find_by_name( name: str ) -> Optional[ "Product" ]:
         
         exact_match = name == Product.product_name
         similar_match = Product.product_name.ilike(f'%{ name }%') # ilike is case insensitive
@@ -33,15 +33,15 @@ class Product( db.Model ):
 
     @staticmethod
     def find_by_name_or_id( identifier: (int | str) ) -> Optional[ "Product" ]:
-        if identifier.isdigit():
+        if str(identifier).isnumeric():
             return Product.find_by_id( identifier )
         else:
             return Product.find_by_name( identifier )
 
     @staticmethod
-    def make( name, price ) -> Tuple[ Optional[ "Product" ], str ]:
+    def make( name: str, price: float ) -> Tuple[ Optional[ "Product" ], str ]:
 
-        if name.isdigit():
+        if name is int and name.isdigit():
             return None, "The name cannot be a number."
         
         if Product.find_by_name( name ):
@@ -51,8 +51,6 @@ class Product( db.Model ):
             return None, "Invalid price value."
 
         return Product( name=name, price=price ), f"Successfully added product: [{ name }, { price }]"
-
-        
 
         
 

@@ -1,8 +1,7 @@
 from app.extensions import db
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Dict
 from app.models import product, vending_machine
-from sqlalchemy.ext.hybrid import hybrid_property
 
 """
 This represents the relationship between
@@ -21,12 +20,19 @@ class MachineStock( db.Model ):
     product_id = db.Column( db.Integer, db.ForeignKey('product.product_id'), primary_key=True )
     quantity = db.Column( db.Integer, nullable=False )
 
+    # Aliases
+    Quantity = int
+    ProductID = int
+    OptStock = Optional[ "MachineStock" ]
+    StockInfo = Tuple[ ProductID, Quantity ]
+    ListOfStockInfo = List[ StockInfo ]
+
     @staticmethod
-    def get( machine_id: int, product_id: int ) -> Optional[ "MachineStock" ]:
+    def get( machine_id: int, product_id: int ) -> OptStock:
         return MachineStock.query.filter_by( machine_id=machine_id, product_id=product_id ).first()
 
     @staticmethod
-    def make( machine_id: int, product_identifier: ( int|str ), quantity: int ) -> Tuple[ Optional[ "MachineStock" ], str ]:
+    def make( machine_id: int, product_identifier: ( int|str ), quantity: int ) -> Tuple[ OptStock, str ]:
         
         if vending_machine.Machine.find_by_id( machine_id ) is None:
             return None, f"No machine with id { machine_id } found."
@@ -47,7 +53,7 @@ class MachineStock( db.Model ):
             product_id=target_product.product_id, 
             quantity=quantity
             ), \
-            f"Added product to machine { machine_id } successfully"
+            f"Added product { target_product.product_id } to machine { machine_id } successfully"
 
     @property
     def product_name( self ):
@@ -56,3 +62,31 @@ class MachineStock( db.Model ):
     @property
     def product_price( self ):
         return self.product.product_price
+
+    """
+    Processes the following json body into a list of tuples ( pid, quantity )
+
+    [
+        {
+            "product_id": <product_id>,
+            "quantity": <quantity>
+        },
+        ...
+    ]
+    """
+    @staticmethod
+    def process_raw( raw: Optional[ List[ Dict[ str, str ] ] ] ) -> Optional[ ListOfStockInfo ]:
+        
+        if raw is None:
+            return None
+        
+        stock_information_list: MachineStock.ListOfStockInfo = []
+
+        for stock_info in raw:
+            product_id = stock_info['product_id']
+            quantity = stock_info['quantity']
+            stock_information_list.append( ( product_id, quantity ) )
+
+        return stock_information_list
+
+        
