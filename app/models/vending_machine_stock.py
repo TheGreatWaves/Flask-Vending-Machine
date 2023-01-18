@@ -1,6 +1,11 @@
+# Flask
 from app.extensions import db
+
+# Core
 from dataclasses import dataclass
 from typing import Tuple, Optional, List, Dict
+
+# Models
 from app.models import product, vending_machine
 
 """
