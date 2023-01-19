@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 from app.utils.result import Result
 
+"""
+Records stores a list of information about specific items
+"""
 @dataclass 
 class Record:
     Records: Dict[str, List[str]]
@@ -27,6 +30,11 @@ class Record:
         else:
             self.Records[specific] = [new_record]
 
+"""
+A log contains a bunch of broad entries which contains records regarding the entry 
+An example of a broad entry: "Error", one of the records specific entry could be: "Machine Error"
+It can be used in conjuction with the Result class to help ease of logging (somewhat...)
+"""
 @dataclass
 class Log:
     Logs: Dict[str, Record]
@@ -34,6 +42,10 @@ class Log:
     def __init__(self):
         self.Logs = {}
 
+    # Creates a new broad entry. Note that
+    # this returns a reference to the entry,
+    # meaning we can directly call .add(<specific>, <info>)
+    # without needing to supply the broad entry name again
     def entry(self, name:str):
         if record := self.Logs.get(name):
             return record
@@ -41,6 +53,7 @@ class Log:
             self.Logs[name] = Record(records={})
             return self.Logs[name]
 
+    # Add entry to name/specific
     def add(self, name:str, specific:str, info:str) -> "Log":
         if record := self.Logs.get(name):
             record.add(specific, info)
@@ -48,6 +61,8 @@ class Log:
             self.Logs[name] = Record(records={specific:[info]})
         return self
     
+    # Depending on the outcome of the result, if postive, the log will be added 
+    # accordingly to the entry specified, otherwise it will be under Error/<err_name>
     def addResult(self, name:str, specific:str, result: Result, err_name: Optional[str] = None) -> "Log":
         success = result.object
         msg = result.message
@@ -66,6 +81,7 @@ class Log:
 
         return self
 
+    # You can use the += operator on logs to join them
     def __iadd__(self, other: "Log"):
         print(other)
         for k, v in other.Logs.items():
@@ -75,5 +91,6 @@ class Log:
                 self.Logs[k] = v
         return self
 
+    # Built-in for ease of logging errors
     def error(self, specific:str, err: str) -> "Log":
         return self.add("Error", specific, err)

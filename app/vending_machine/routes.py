@@ -1,4 +1,5 @@
 # Flask
+from app.utils import common
 from app.vending_machine import bp
 from flask import jsonify, request
 from app.extensions import db
@@ -58,7 +59,7 @@ def add_product_to_machine(machine_id: int):
 
             return jsonify(log)
 
-        return jsonify(Log().error("JSON Error", "Invalid JSON body."))
+        return jsonify(common.JSON_ERROR)
 
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f"No machine found with given id { machine_id }."))
 
@@ -98,10 +99,10 @@ def edit_machine(id):
         # Valid JSON body
         if content := request.get_json():
 
-            new_name = content.get("name")
-            new_location = content.get("location")
+            new_name = content.get('machine_name')
+            new_location = content.get('location')
             # Type: Optional[ List[ Dict[ str, str ] ] ]
-            new_stock_list = content.get("stock_list")
+            new_stock_list = content.get('stock_list')
 
             stock_information_list = MachineStock.process_raw(new_stock_list)
 
@@ -115,7 +116,7 @@ def edit_machine(id):
             # Return log info
             return jsonify(changelog)
 
-        return jsonify(Log().error("JSON Error", "Invalid JSON body"))
+        return jsonify(common.JSON_ERROR)
 
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f'No machine with given ID ({id}) found'))
 
@@ -147,7 +148,7 @@ def buy_product_from_machine(machine_id: int, product_id: (int | str)):
                 Message=message
             )
 
-        return jsonify(Log().error("JSON Error", "Invalid JSON body"))
+        return jsonify(common.JSON_ERROR)
 
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f"No machine found with given id { machine_id }."))
 
@@ -159,7 +160,7 @@ def remove_product_from_machine(machine_id: int, product_id: str):
 
         result = target_machine.remove_stock(product_id=product_id)
 
-        if result.success:
+        if result.object:
             db.session.commit()
 
         return jsonify(Log().addResult("Machine", f"Machine ID {machine_id}", result, Machine.ERROR_REMOVE_PRODUCT))

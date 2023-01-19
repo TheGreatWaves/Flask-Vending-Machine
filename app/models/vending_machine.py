@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 # Models
 from app.models.product import Product
 from app.models.vending_machine_stock import MachineStock
+from app.utils import common
 from app.utils.log import Log, Record
 
 # Utils
@@ -44,11 +45,11 @@ class Machine(db.Model):
     @staticmethod
     def make(location: str, name: str) -> Result:
 
-        if location.isnumeric():
-            return Result.error("Location can not be numeric.")
+        if common.isnumber(location):
+            return Result.error("Location can not be a number.")
 
-        if name.isnumeric():
-            return Result.error("Name can not be numeric.")
+        if common.isnumber(name):
+            return Result.error("Name can not be a number.")
     
         if Machine.find(name=name, location=location):
             return Result.error( f"A machine with given name and location already exists. (Location: { location }, Name: { name })")
@@ -121,7 +122,7 @@ class Machine(db.Model):
         if self.machine_name == new_name:
             return Result.error("Name redundant, no changes made.")
 
-        if new_name.isnumeric():
+        if common.isnumber(new_name):
             return Result.error("Name can not be numeric.")
 
         if Machine.find(name=new_name, location=self.location):
@@ -138,7 +139,7 @@ class Machine(db.Model):
         if self.location == new_location:
             return Result.error("Location redundant, no changes made")
 
-        if new_location.isnumeric():
+        if common.isnumber(new_location):
             return Result.error("Location can not be numeric.")
 
         if Machine.find(name=self.machine_name, location=new_location):
@@ -160,7 +161,7 @@ class Machine(db.Model):
         if new_name is None \
                 and new_location is None \
                 and new_stock is None:
-            return Log.error("Edit Error", "Nothing to edit")
+            return Log().error("Edit Error", "Nothing to edit")
 
         machine_info = f"Machine ID {self.machine_id}"
 
