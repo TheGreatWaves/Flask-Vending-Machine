@@ -21,3 +21,7 @@ class Result:
     def error(err: str) -> "Result":
         return Result(None, err)
 
+    @staticmethod
+    def success(msg: str) -> "Result":
+        return Result(True, msg)
+

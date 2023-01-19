@@ -8,16 +8,24 @@ from app.models.vending_machine import Machine
 from app.models.product import Product
 from app.models.vending_machine_stock import MachineStock
 
+# Utils
+from app.utils.log import Log
 
 @bp.route("/create/<location>/<name>", methods=["POST"])
 def create(location, name):
-    machine, message = Machine.make(location, name)
 
+    log = Log()
+
+    result = Machine.make(location, name)
+    machine, _ = result
+    
     if machine:
         db.session.add(machine)
         db.session.commit()
 
-    return jsonify(Message=message)
+    log.addResult("Machine", f"New Machine: {location}, {name}", result, Machine.ERROR_CREATE_FAIL)
+
+    return jsonify(log)
 
 
 @bp.route("/at/<location>", methods=["GET"], defaults={"name": None})
@@ -28,11 +36,13 @@ def get(location, name):
         return jsonify(machine)
     else:
         return jsonify(
-            Error=f"No machine found. ( Location: { location }, Name: { name } )"
+            Log().error(Machine.ERROR_NOT_FOUND, f"No machine found. (Location: { location }, Name: { name })")
         )
 
-
-# TODO: make this be able to add several
+"""
+Note: This class is ABLE to add multiple products at once
+Expects: Json{ 'stock_list':[ {product_id:<int>, quantity:<int>}, ... ] }
+"""
 @bp.route("/<int:machine_id>/add", methods=["POST"])
 def add_product_to_machine(machine_id: int):
 
@@ -48,9 +58,9 @@ def add_product_to_machine(machine_id: int):
 
             return jsonify(log)
 
-        return jsonify(Message="Invalid JSON body.")
+        return jsonify(Log().error("JSON Error", "Invalid JSON body."))
 
-    return jsonify(Message=f"No machine found with given id { machine_id }.")
+    return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f"No machine found with given id { machine_id }."))
 
 
 @bp.route("/<int:id>", methods=["GET"])
@@ -59,8 +69,7 @@ def get_machine_by_id(id):
     if machine := Machine.find_by_id(id):
         return jsonify(machine)
 
-    return jsonify(Error=f"No machine with given ID {id} found.")
-
+    return jsonify( Log().error(Machine.ERROR_NOT_FOUND, f"No machine with given ID {id} found."))
 
 """
 Important NOTE:
@@ -104,11 +113,11 @@ def edit_machine(id):
             db.session.commit()
 
             # Return log info
-            return jsonify(Log=changelog)
+            return jsonify(changelog)
 
-        return jsonify(Error="Invalid JSON body")
+        return jsonify(Log().error("JSON Error", "Invalid JSON body"))
 
-    return jsonify(Error=f'No machine with given ID ({id}) found')
+    return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f'No machine with given ID ({id}) found'))
 
 
 @bp.route("/all", methods=["GET"])
@@ -117,7 +126,7 @@ def get_all_machines():
     if machines := Machine.query.all():
         return jsonify(machines)
 
-    return jsonify(Message="There are no existing machines")
+    return jsonify(Log().error(Machine.ERROR_NOT_FOUND, "There are no existing machines"))
 
 
 @bp.route("/<int:machine_id>/buy/<int:product_id>", methods=["POST"])
@@ -138,19 +147,32 @@ def buy_product_from_machine(machine_id: int, product_id: (int | str)):
                 Message=message
             )
 
-        return jsonify(Message="Invalid JSON")
+        return jsonify(Log().error("JSON Error", "Invalid JSON body"))
 
-    return jsonify(Message=f"No machine found with given id { machine_id }.")
+    return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f"No machine found with given id { machine_id }."))
 
 
-@bp.route("/<int:machine_id>/remove/<product_id>", methods=["GET"])
-def remove_product_from_machine(machine_id: int, product_id: (int | str)):
+@bp.route("/<int:machine_id>/remove/<product_id>", methods=["POST"])
+def remove_product_from_machine(machine_id: int, product_id: str):
 
     if target_machine := Machine.find_by_id(machine_id):
 
-        target_machine.remove_stock(product_id=product_id)
+        result = target_machine.remove_stock(product_id=product_id)
+
+        if result.success:
+            db.session.commit()
+
+        return jsonify(Log().addResult("Machine", f"Machine ID {machine_id}", result, Machine.ERROR_REMOVE_PRODUCT))
+
+    return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f"No machine found with given id { machine_id }."))
+
+@bp.route("/<int:machine_id>/destroy", methods=["POST"])
+def remove_machine(machine_id):
+
+    if target_machine := Machine.find_by_id(machine_id):
+
+        target_machine.destroy()
         db.session.commit()
+        return jsonify(Log().add("Machine", f"Machine ID {machine_id}", "Successfully delelted."))
 
-        return jsonify(Message=f"Product ID {product_id} removed from machine ID {machine_id}.")
-
-    return jsonify(Message=f"No machine found with given id { machine_id }.")
+    return jsonify(Log().error(Machine.ERROR_NOT_FOUND, f"No machine found with given id { machine_id }."))

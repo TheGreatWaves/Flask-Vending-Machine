@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 # Models
 from app.models.product import Product
 from app.models.vending_machine_stock import MachineStock
+from app.utils.log import Log, Record
 
 # Utils
 from app.utils.result import Result, ResultMessage
@@ -34,15 +35,21 @@ class Machine(db.Model):
     ListOfMachines = List["Machine"]
     OptMachine = Optional["Machine"]
 
+    # Defining/ Classifying errors
+    ERROR = "Machine Error"
+    ERROR_NOT_FOUND = "Machine Not Found"
+    ERROR_CREATE_FAIL = "Machine Creation Error"
+    ERROR_REMOVE_PRODUCT = f"Machine Product Removal Error"
+
     @staticmethod
     def make(location: str, name: str) -> Result:
 
-        if name.isnumeric():
-            return Result.error( "Name can not be numeric.")
-
         if location.isnumeric():
-            return Result.error( "Location can not be numeric.")
+            return Result.error("Location can not be numeric.")
 
+        if name.isnumeric():
+            return Result.error("Name can not be numeric.")
+    
         if Machine.find(name=name, location=location):
             return Result.error( f"A machine with given name and location already exists. (Location: { location }, Name: { name })")
 
@@ -94,7 +101,7 @@ class Machine(db.Model):
 
     def add_product(self, product_id: (int | str), quantity: int) -> Result:
 
-        if not str(quantity).isnumeric():
+        if not isinstance(quantity, int):
             return Result.error( f"Invalid quantity type. Expect int, got={type(quantity).__name__}")
 
         if quantity < 0:
@@ -103,85 +110,83 @@ class Machine(db.Model):
         if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):
             old_quantity = stock.quantity
             stock.quantity += quantity
-            return Result.error( f"Updated stock: {old_quantity} -> {stock.quantity}")
+            return Result(stock, f"Updated stock: {old_quantity} -> {stock.quantity}")
 
         return MachineStock.make(machine_id=self.machine_id, product_id=product_id, quantity=quantity)
 
     # Returns the change log
-    def _edit_name(self, new_name: str) -> ResultMessage:
+    def _edit_name(self, new_name: str) -> Result:
 
         # Check redundancy
         if self.machine_name == new_name:
-            return "Failed, name redundant, no changes made."
+            return Result.error("Name redundant, no changes made.")
 
         if new_name.isnumeric():
-            return "Failed, name can not be numeric."
+            return Result.error("Name can not be numeric.")
 
         if Machine.find(name=new_name, location=self.location):
-            return f"Failed, an existing machine with the name '{new_name}' already exists at '{self.location}'"
+            return Result.error(f"An existing machine with the name '{new_name}' already exists at '{self.location}'")
 
         log = f'{ self.machine_name } -> { new_name }'
         self.machine_name = new_name
-        return log
+        return Result.success(log)
 
     # Returns the change log
-    def _edit_location(self, new_location: str):
+    def _edit_location(self, new_location: str) -> Result:
 
         # Check redundancy
         if self.location == new_location:
-            return "Failed, location redundant, no changes made"
+            return Result.error("Location redundant, no changes made")
 
         if new_location.isnumeric():
-            return "Failed, location can not be numeric."
+            return Result.error("Location can not be numeric.")
 
         if Machine.find(name=self.machine_name, location=new_location):
-            return f"Failed, an existing machine with the name '{self.machine_name}' already exists at '{new_location}'"
+            return Result.error(f"An existing machine with the name '{self.machine_name}' already exists at '{new_location}'")
 
         log = f'{ self.location } -> { new_location }'
         self.location = new_location
-        return log
+        return Result.success(log)
 
     # Edits the machine and returns the change log
     def edit(self,
              new_name: Optional[str],
              new_location: Optional[str],
              new_stock: Optional[MachineStock.ListOfStockInfo]
-             ) -> Dict[str, str]:
+             ) -> Log:
 
-        logs: Dict[str, str] = {}
+        log = Log()
 
         if new_name is None \
                 and new_location is None \
                 and new_stock is None:
-            return {'Failed': 'Nothing to edit'}
+            return Log.error("Edit Error", "Nothing to edit")
+
+        machine_info = f"Machine ID {self.machine_id}"
 
         if new_location:
-            location_log = self._edit_location(new_location=new_location)
-            logs['Location'] = location_log
-
+            result = self._edit_location(new_location=new_location)
+            log.addResult("Edit", machine_info, result)
+            
         if new_name:
-            name_log = self._edit_name(new_name=new_name)
-            logs['Name'] = name_log
+            result = self._edit_name(new_name=new_name)
+            log.addResult("Edit", machine_info, result)
 
         if new_stock:
 
-            # Expect success by default
-            logs['Stock'] = "Successfully editted stock"
-
             # Delete current stock
             self.remove_all_stock()
+            
+        product_log = self.add_products(new_stock)
+        log += product_log
 
-            product_log = self.add_products(new_stock)
+        return log
 
-            logs.update(product_log)
-
-        return logs
-
-    def add_products(self, stocks: Optional[MachineStock.ListOfStockInfo]) -> Dict[str, str]:
+    def add_products(self, stocks: Optional[MachineStock.ListOfStockInfo]) -> Log:
         if stocks is None:
-            return {"Error":"No product(s) provided."}\
+            return Log().error("Product Error", "No product(s) provided.")
 
-        logs: Dict[str, str] = {}
+        log = Log()
 
         # Add all new stock
         for product_id, quantity in stocks:
@@ -189,14 +194,13 @@ class Machine(db.Model):
                 product_id=product_id, quantity=quantity)
 
             if stock_info:
-                db.session.add(stock_info)
-                
-            # This can an error message ( We only return 1 error at a time )
-            # Notice that this DOES NOT throw any exception, but it does
-            # signal that something has gone wrong (though not fatal)
-            logs[f"Product {product_id}"] = message
+                log.add("Product", f"Product ID {product_id}" , message)
+                if stock_info.product is None:
+                    db.session.add(stock_info)
+            else:
+                log.error(f"Product ID {product_id}" , message)
 
-        return logs
+        return log
 
 
     def remove_all_stock(self):
@@ -206,6 +210,9 @@ class Machine(db.Model):
 
     # Returns ( Change, Message )
     def buy_product(self, product_id: int, payment: float) -> Result:
+        
+        if payment is None:
+            return Result.error("No payment received.")
 
         casted_payment: float
         try:
@@ -232,10 +239,12 @@ class Machine(db.Model):
         # Product not found, product out of stock
         return Result(payment, "Product is not in stock.")
 
-    def remove_stock(self, product_id: id) -> ResultMessage:
-
+    def remove_stock(self, product_id: id) -> Result:
         if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):
             stock.remove_from_machine()
-            return "Successfully removed product from machine."
+            return Result.success(f"Successfully removed product from machine. (Product ID: {product_id})")
+        return Result.error(f"Product not found in machine. (Machine ID: {self.machine_id}, Product ID: {product_id})")
 
-        return "Product not found in machine."
+    def destroy(self):
+        self.remove_all_stock()
+        db.session.delete(self)

@@ -91,13 +91,13 @@ class Product(db.Model):
 
         # Check redundancy
         if self.product_name == new_name:
-            return "Failed, name redundant, no changes made."
+            return "Name redundant, no changes made."
 
         if new_name.isnumeric():
-            return "Failed, the name can not be numeric."
+            return "The name can not be numeric."
 
         if Product.find_by_name(name=new_name):
-            return f"Failed, an existing product with the name '{new_name}' already exists."
+            return f"An existing product with the name '{new_name}' already exists."
 
         log = f'{ self.product_name } -> { new_name }'
         self.product_name = new_name
@@ -115,14 +115,14 @@ class Product(db.Model):
 
             # Check redundancy
             if math.isclose(self.product_price, casted_new_price):
-                return "Failed, price redundant, no changes made"
+                return "Price redundant, no changes made"
 
             log = f'{ self.product_price } -> { casted_new_price }'
             self.product_price = casted_new_price
             return log
 
         except ValueError:
-            return f"Failed, the price value is invalid. (Incorrect type, expected float, got={type(new_price).__name__})"
+            return f"The price value is invalid. (Incorrect type, expected float, got={type(new_price).__name__})"
 
     # Edits the product and returns the change log
     def edit(self,
