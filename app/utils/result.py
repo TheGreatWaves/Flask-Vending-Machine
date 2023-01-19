@@ -15,5 +15,9 @@ class Result:
 
     # For attribute unpacking
     def __iter__(self):
-        return iter(self.__dict__.values())
+        return iter(self.__dict__.values())\
+
+    @staticmethod 
+    def error(err: str) -> "Result":
+        return Result(None, err)
 

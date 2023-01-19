@@ -10,7 +10,7 @@ from typing import List, Tuple, Optional, Dict, Union
 from app.models.vending_machine_stock import MachineStock
 
 # Utils
-from app.utils.result import Result
+from app.utils.result import Result, ResultMessage
 
 
 @dataclass
@@ -64,30 +64,30 @@ class Product(db.Model):
     def make(name: str, price: str) -> Result:
 
         if name is None:
-            return Result(None, "Product name is missing.")
+            return Result.error("Product name is missing.")
 
         if price is None:
-            return Result(None, "Product price is missing.")
+            return Result.error("Product price is missing.")
 
         if str(name).isnumeric():
-            return Result(None, "The name cannot be a number.")
+            return Result.error("The name cannot be a number.")
 
         try:
             casted_price = float(price)
             if casted_price < 0.0:
-                return Result(None, "Invalid price value. (price < 0.00)")
+                return Result.error("Invalid price value. (price < 0.00)")
 
             if Product.find_by_name(name):
-                return Result(None, "A product with the given name already exists.")
+                return Result.error("A product with the given name already exists.")
 
             return Result(Product(name=name, price=casted_price), f"Successfully added product: [{ name }, { casted_price }]")
 
         except ValueError:
-            return Result(None, f"The price value is invalid. (Incorrect type, expected float, got={type(price).__name__})")
+            return Result.error(f"The price value is invalid. (Incorrect type, expected float, got={type(price).__name__})")
 
      # Returns the change log
 
-    def _edit_name(self, new_name: str) -> str:
+    def _edit_name(self, new_name: str) -> ResultMessage:
 
         # Check redundancy
         if self.product_name == new_name:
@@ -104,7 +104,7 @@ class Product(db.Model):
         return log
 
     # Edits price and returns the change log
-    def _edit_price(self, new_price: float):
+    def _edit_price(self, new_price: float) -> ResultMessage:
 
         # Note: The exception is handled here so it
         # can bubble the error message back to the log

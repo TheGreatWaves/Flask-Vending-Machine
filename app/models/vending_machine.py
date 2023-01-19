@@ -10,7 +10,7 @@ from app.models.product import Product
 from app.models.vending_machine_stock import MachineStock
 
 # Utils
-from app.utils.result import Result
+from app.utils.result import Result, ResultMessage
 
 
 @dataclass
@@ -38,13 +38,13 @@ class Machine(db.Model):
     def make(location: str, name: str) -> Result:
 
         if name.isnumeric():
-            return Result(None, "Name can not be numeric.")
+            return Result.error( "Name can not be numeric.")
 
         if location.isnumeric():
-            return Result(None, "Location can not be numeric.")
+            return Result.error( "Location can not be numeric.")
 
         if Machine.find(name=name, location=location):
-            return Result(None, f"A machine with given name and location already exists. (Location: { location }, Name: { name })")
+            return Result.error( f"A machine with given name and location already exists. (Location: { location }, Name: { name })")
 
         new_machine = Machine(location=location, machine_name=name)
 
@@ -95,20 +95,20 @@ class Machine(db.Model):
     def add_product(self, product_id: (int | str), quantity: int) -> Result:
 
         if not str(quantity).isnumeric():
-            return Result(None, f"Invalid quantity type. Expect int, got={type(quantity).__name__}")
+            return Result.error( f"Invalid quantity type. Expect int, got={type(quantity).__name__}")
 
         if quantity < 0:
-            return Result(None, f"Quantity can not be negative. (got {quantity})")
+            return Result.error( f"Quantity can not be negative. (got {quantity})")
 
         if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):
             old_quantity = stock.quantity
             stock.quantity += quantity
-            return Result(None, f"Updated stock: {old_quantity} -> {stock.quantity}")
+            return Result.error( f"Updated stock: {old_quantity} -> {stock.quantity}")
 
         return MachineStock.make(machine_id=self.machine_id, product_id=product_id, quantity=quantity)
 
     # Returns the change log
-    def _edit_name(self, new_name: str) -> str:
+    def _edit_name(self, new_name: str) -> ResultMessage:
 
         # Check redundancy
         if self.machine_name == new_name:
@@ -191,8 +191,6 @@ class Machine(db.Model):
             if stock_info:
                 db.session.add(stock_info)
                 
-        
-                
             # This can an error message ( We only return 1 error at a time )
             # Notice that this DOES NOT throw any exception, but it does
             # signal that something has gone wrong (though not fatal)
@@ -234,7 +232,7 @@ class Machine(db.Model):
         # Product not found, product out of stock
         return Result(payment, "Product is not in stock.")
 
-    def remove_stock(self, product_id: id) -> str:
+    def remove_stock(self, product_id: id) -> ResultMessage:
 
         if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):
             stock.remove_from_machine()
