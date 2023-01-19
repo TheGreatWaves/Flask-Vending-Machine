@@ -40,19 +40,13 @@ def add_product_to_machine(machine_id: int):
 
         if content := request.get_json():
 
-            product_id = content.get('product_id')
-            quantity = content.get('quantity')
-
-            stock, message = target_machine.add_product(
-                product_id=product_id, quantity=quantity
-            )
-
-            if stock:
-                db.session.add(stock)
-
+            raw_stock_list = content.get('stock_list')
+            stock_list = MachineStock.process_raw(raw_stock_list)
+            log = target_machine.add_products(stocks=stock_list)
+            
             db.session.commit()
 
-            return jsonify(Message=message)
+            return jsonify(log)
 
         return jsonify(Message="Invalid JSON body.")
 

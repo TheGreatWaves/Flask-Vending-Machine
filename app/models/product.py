@@ -9,6 +9,9 @@ from typing import List, Tuple, Optional, Dict, Union
 # Models
 from app.models.vending_machine_stock import MachineStock
 
+# Utils
+from app.utils.result import Result
+
 
 @dataclass
 class Product(db.Model):
@@ -58,29 +61,29 @@ class Product(db.Model):
 
     # Returns product (if success), msg (indicating success)
     @staticmethod
-    def make(name: str, price: str) -> Tuple[OptProduct, str]:
+    def make(name: str, price: str) -> Result:
 
         if name is None:
-            return None, "Product name is missing."
+            return Result(None, "Product name is missing.")
 
         if price is None:
-            return None, "Product price is missing."
+            return Result(None, "Product price is missing.")
 
         if str(name).isnumeric():
-            return None, "The name cannot be a number."
+            return Result(None, "The name cannot be a number.")
 
         try:
             casted_price = float(price)
             if casted_price < 0.0:
-                return None, "Invalid price value. (price < 0.00)"
+                return Result(None, "Invalid price value. (price < 0.00)")
 
             if Product.find_by_name(name):
-                return None, "A product with the given name already exists."
+                return Result(None, "A product with the given name already exists.")
 
-            return Product(name=name, price=casted_price), f"Successfully added product: [{ name }, { casted_price }]"
+            return Result(Product(name=name, price=casted_price), f"Successfully added product: [{ name }, { casted_price }]")
 
         except ValueError:
-            return None, f"The price value is invalid. (Incorrect type, expected float, got={type(price).__name__})"
+            return Result(None, f"The price value is invalid. (Incorrect type, expected float, got={type(price).__name__})")
 
      # Returns the change log
 

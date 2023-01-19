@@ -9,6 +9,9 @@ from typing import Dict, List, Optional, Tuple, Union
 from app.models.product import Product
 from app.models.vending_machine_stock import MachineStock
 
+# Utils
+from app.utils.result import Result
+
 
 @dataclass
 class Machine(db.Model):
@@ -32,27 +35,20 @@ class Machine(db.Model):
     OptMachine = Optional["Machine"]
 
     @staticmethod
-    def make(location: str, name: str, products: Optional[MachineStock.ListOfStockInfo] = None) -> Tuple[OptMachine, str]:
+    def make(location: str, name: str) -> Result:
 
         if name.isnumeric():
-            return None, "Name can not be numeric."
+            return Result(None, "Name can not be numeric.")
 
         if location.isnumeric():
-            return None, "Location can not be numeric."
+            return Result(None, "Location can not be numeric.")
 
         if Machine.find(name=name, location=location):
-            return None, f"A machine with given name and location already exists. (Location: { location }, Name: { name })"
+            return Result(None, f"A machine with given name and location already exists. (Location: { location }, Name: { name })")
 
         new_machine = Machine(location=location, machine_name=name)
 
-        if products:
-            for product in products:
-                stock, message = new_machine.add_product(product.product_id)
-
-                if stock is None:
-                    return None, message
-
-        return new_machine, f"Successfully added vending machine named '{name}' at '{ location }'!"
+        return Result(new_machine, f"Successfully added vending machine named '{name}' at '{ location }'!")
 
     @staticmethod
     def find_by_id(id) -> OptMachine:
@@ -96,13 +92,19 @@ class Machine(db.Model):
         if name:
             return Machine.find_by_name(name=name)
 
-    def add_product(self, product_id: (int | str), quantity: int) -> Tuple[MachineStock.OptStock, str]:
-        
-        if stock := MachineStock.get(machine_id=self.machine_id,product_id=product_id):
+    def add_product(self, product_id: (int | str), quantity: int) -> Result:
+
+        if not str(quantity).isnumeric():
+            return Result(None, f"Invalid quantity type. Expect int, got={type(quantity).__name__}")
+
+        if quantity < 0:
+            return Result(None, f"Quantity can not be negative. (got {quantity})")
+
+        if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):
             old_quantity = stock.quantity
             stock.quantity += quantity
-            return None, f"Updated stock: {old_quantity} -> {stock.quantity}"
-        
+            return Result(None, f"Updated stock: {old_quantity} -> {stock.quantity}")
+
         return MachineStock.make(machine_id=self.machine_id, product_id=product_id, quantity=quantity)
 
     # Returns the change log
@@ -111,11 +113,11 @@ class Machine(db.Model):
         # Check redundancy
         if self.machine_name == new_name:
             return "Failed, name redundant, no changes made."
-        
+
         if new_name.isnumeric():
             return "Failed, name can not be numeric."
 
-        if Machine.find( name=new_name, location=self.location ):
+        if Machine.find(name=new_name, location=self.location):
             return f"Failed, an existing machine with the name '{new_name}' already exists at '{self.location}'"
 
         log = f'{ self.machine_name } -> { new_name }'
@@ -132,7 +134,7 @@ class Machine(db.Model):
         if new_location.isnumeric():
             return "Failed, location can not be numeric."
 
-        if Machine.find( name=self.machine_name, location=new_location ):
+        if Machine.find(name=self.machine_name, location=new_location):
             return f"Failed, an existing machine with the name '{self.machine_name}' already exists at '{new_location}'"
 
         log = f'{ self.location } -> { new_location }'
@@ -167,56 +169,75 @@ class Machine(db.Model):
             logs['Stock'] = "Successfully editted stock"
 
             # Delete current stock
-            delete_stock = MachineStock.__table__.delete().where(
-                MachineStock.machine_id == self.machine_id)
-            db.session.execute(delete_stock)
+            self.remove_all_stock()
 
-            # Add all new stock
-            for product_id, quantity in new_stock:
-                stock_info, message = self.add_product(
-                    product_id=product_id, quantity=quantity)
+            product_log = self.add_products(new_stock)
 
-                if stock_info:
-                    db.session.add(stock_info)
-                else:
-                    # This is an error message ( We only return 1 error at a time )
-                    # Notice that this DOES NOT throw any exception, but it does
-                    # signal that something has gone wrong (though not fatal)
-                    logs['Stock'] = message
+            logs.update(product_log)
+
+        return logs
+
+    def add_products(self, stocks: Optional[MachineStock.ListOfStockInfo]) -> Dict[str, str]:
+        if stocks is None:
+            return {"Error":"No product(s) provided."}\
+
+        logs: Dict[str, str] = {}
+
+        # Add all new stock
+        for product_id, quantity in stocks:
+            stock_info, message = self.add_product(
+                product_id=product_id, quantity=quantity)
+
+            if stock_info:
+                db.session.add(stock_info)
+                
+        
+                
+            # This can an error message ( We only return 1 error at a time )
+            # Notice that this DOES NOT throw any exception, but it does
+            # signal that something has gone wrong (though not fatal)
+            logs[f"Product {product_id}"] = message
 
         return logs
 
 
+    def remove_all_stock(self):
+        delete_stock = MachineStock.__table__.delete().where(
+            MachineStock.machine_id == self.machine_id)
+        db.session.execute(delete_stock)
+
     # Returns ( Change, Message )
-    def buy_product(self, product_id: int, payment: float) -> Tuple[ float, str ]: 
-        
+    def buy_product(self, product_id: int, payment: float) -> Result:
+
         casted_payment: float
         try:
+            # Ideally we should never get an
+            # invalid json value type but just incase
             casted_payment = float(payment)
+
         except ValueError:
-            return payment, "Invalid payment type."
+            return Result(payment, "Invalid payment type.")
 
         if product_stock := MachineStock.get(self.machine_id, product_id):
-            
+
             if product_stock.out_of_stock():
-                return casted_payment, "Product is out of stock."
+                return Result(casted_payment, "Product is out of stock.")
 
             if (price := product_stock.product.product_price) > casted_payment:
-                return casted_payment, f"Not enough money, costs {price} Baht, got {casted_payment} Baht."
+                return Result(casted_payment, f"Not enough money, costs {price} Baht, got {casted_payment} Baht.")
             else:
                 product_stock.decrease_stock()
                 self.balance = float(self.balance) + float(price)
                 db.session.commit()
-                return casted_payment-float(price), "Successfully bought product."
+                return Result(casted_payment-float(price), "Successfully bought product.")
 
         # Product not found, product out of stock
-        return payment, "Product is not in stock."
+        return Result(payment, "Product is not in stock.")
 
-    
     def remove_stock(self, product_id: id) -> str:
-        
+
         if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):
             stock.remove_from_machine()
             return "Successfully removed product from machine."
-        
+
         return "Product not found in machine."

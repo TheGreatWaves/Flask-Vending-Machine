@@ -8,6 +8,9 @@ from typing import Tuple, Optional, List, Dict
 # Models
 from app.models import product, vending_machine
 
+# Utils
+from app.utils.result import Result
+
 """
 This represents the relationship between
 the machines and the products they have.
@@ -37,28 +40,28 @@ class MachineStock( db.Model ):
         return MachineStock.query.filter_by( machine_id=machine_id, product_id=product_id ).first()
 
     @staticmethod
-    def make( machine_id: int, product_id: ( int|str ), quantity: int ) -> Tuple[ OptStock, str ]:
+    def make( machine_id: int, product_id: ( int|str ), quantity: int ) -> Result:
         
         if vending_machine.Machine.find_by_id( machine_id ) is None:
-            return None, f"No machine with id { machine_id } found."
+            return Result(None, f"No machine with id { machine_id } found.")
 
         target_product = product.Product.find_by_name_or_id( identifier=product_id, first=True )
         if target_product is None:
-            return None, f"No product with id/name { product_id } found."
+            return Result(None, f"No product with id/name { product_id } found.")
 
         if quantity <= 0:
-            return None, f"Invalid quantity. ( n <= 0 )"
+            return Result(None, f"Invalid quantity. ( n <= 0 )")
 
         # Prevent duplicate entry
         if MachineStock.get( machine_id=machine_id, product_id=product_id, ):
-            return None, f"An existing entry already exists for machine { machine_id } and product { target_product.product_id }"
+            return Result(None, f"An existing entry already exists for machine { machine_id } and product { target_product.product_id }")
 
-        return MachineStock( 
+        return Result(MachineStock( 
             machine_id=machine_id, 
             product_id=target_product.product_id, 
             quantity=quantity
             ), \
-            f"Added product { target_product.product_id } to machine { machine_id } successfully"
+            f"Added product { target_product.product_id } to machine { machine_id } successfully")
 
     @property
     def product_name( self ):
