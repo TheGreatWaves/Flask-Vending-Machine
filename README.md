@@ -18,7 +18,7 @@
 > - `/product/create` (POST), Parses JSON for product information and creates a new product.
 > - `/product/search/<identifier>` (GET), Search for product given ID or product name.
 > - `/product/<product_id>` (GET), Get the product with the given ID.
-> - `/product/<product_id>/edit` (POST), Parses JSON indicating desired changes and apply them to the machine if applicable.
+> - `/product/<product_id>/edit` (POST), Parses JSON indicating desired changes and apply them to the product if applicable.
 > - `/product/<product_id>/where` (GET), Return information of all machines which contains the product.
 > - `/product/all` (GET), Return information of all products.
 
