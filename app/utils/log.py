@@ -72,7 +72,6 @@ class Log:
                 record.add(specific, msg)
             else:
                 self.Logs[name] = Record(records={specific:[msg]})
-            return self
         else:
             if err_name:
                 self.error(specific=err_name, err=msg)

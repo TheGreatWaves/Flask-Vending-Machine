@@ -13,8 +13,8 @@ from app.utils.log import Log
 """
 Expected JSON:
 {
-    "name": <str>,
-    "price": <float>
+    "product_name": <str>,
+    "product_price": <float>
 }
 """
 
@@ -53,6 +53,13 @@ def get_product(product_id):
 
     return jsonify(Log().error(Product.ERROR_NOT_FOUND, f"Product not found. (Product ID: {product_id})"))
 
+"""
+Expected JSON:
+{
+    "product_name": <str>,
+    "product_price": <float>
+}
+"""
 
 @bp.route("/<int:product_id>/edit", methods=['POST'])
 def edit_product(product_id):
