@@ -29,6 +29,11 @@
 docker run -p 127.0.0.1:13310:3306 --name vending -e MYSQL_ROOT_PASSWORD=vendingpass -e MYSQL_DATABASE=vendingdb -d --restart=always mysql
 ```
 
+Install requirements: 
+```
+pip install -r ./requirements.txt
+```
+
 > `reset_db.py`
 > - Requires docker database running.
 > - Drop all records in the database.
@@ -40,8 +45,6 @@ docker run -p 127.0.0.1:13310:3306 --name vending -e MYSQL_ROOT_PASSWORD=vending
 
 > `config.py`
 > - Contains all config information required for the flask application (automatically applied)
-
-
 
 ## Directory Layout
 
@@ -64,6 +67,7 @@ docker run -p 127.0.0.1:13310:3306 --name vending -e MYSQL_ROOT_PASSWORD=vending
 ├── config.py                     # flask app config
 ├── reset_db.py
 ├── run.py
+├── requirements.txt
 └── docker_setup.sh
 ```
 
