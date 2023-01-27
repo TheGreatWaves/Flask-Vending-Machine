@@ -1,0 +1,20 @@
+version: '3'
+services:
+  mysql:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=vendingpass
+      - MYSQL_DATABASE=vendingdb
+    ports:
+      - "13310:3306"
+    restart: always
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - vending-network
+
+volumes:
+  mysql-data:
+
+networks:
+  vending-network:
