@@ -28,10 +28,10 @@ class MachineStock(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
 
     # Aliases
-    Quantity: TypeAlias = int
+    ProductQuantity: TypeAlias = int
     ProductID: TypeAlias = int
     OptStock: TypeAlias = Optional["MachineStock"]
-    StockInfo: TypeAlias = Tuple[ProductID, Quantity]
+    StockInfo: TypeAlias = Tuple[ProductID, ProductQuantity]
     ListOfStockInfo: TypeAlias = List[StockInfo]
 
     @staticmethod
