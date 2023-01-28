@@ -1,18 +1,11 @@
-# Flask
 import math
-from app.extensions import db
-
-# Core
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Dict, Union
+from typing import Dict, List, Optional, Union
 
-# Models
-from app.models.vending_machine_stock import MachineStock
+from app.extensions import db
 from app.utils import common
 from app.utils.log import Log
-
-# Utils
-from app.utils.result import Result, ResultMessage
+from app.utils.result import Result
 
 
 @dataclass
@@ -22,12 +15,12 @@ class Product(db.Model):
     product_name: str
     product_price: float
 
-    product_id = db.Column('product_id', db.Integer,
-                           primary_key=True, autoincrement=True)
+    product_id = db.Column(
+        "product_id", db.Integer, primary_key=True, autoincrement=True
+    )
     product_name = db.Column(db.String(20), unique=True, nullable=False)
     product_price = db.Column(db.DECIMAL(8, 2), nullable=False)
-    machine_products = db.relationship(
-        "MachineStock", backref="product", lazy=True)
+    machine_products = db.relationship("MachineStock", backref="product", lazy=True)
 
     # Aliases
     OptProduct = Optional["Product"]
@@ -37,7 +30,7 @@ class Product(db.Model):
     ERROR_CREATE_FAIL = "Product Creation Error"
     ERROR_EDIT_FAIL = "Product Edit Error"
 
-    def __init__(self, name, price):
+    def __init__(self, name: str, price: float):  # noqa: ANN204
         self.product_name = name
         self.product_price = price
 
@@ -46,11 +39,14 @@ class Product(db.Model):
         return Product.query.get(id)
 
     @staticmethod
-    def find_by_name(name: str, first: bool = False) -> Union[OptProduct, Optional[List["Product"]]]:
+    def find_by_name(
+        name: str, first: bool = False
+    ) -> Union[OptProduct, Optional[List["Product"]]]:
 
         exact_match = name == Product.product_name
         similar_match = Product.product_name.ilike(
-            f'%{ name }%')  # ilike is case insensitive
+            f"%{ name }%"
+        )  # ilike is case insensitive
 
         found = Product.query.filter(exact_match or similar_match)
 
@@ -60,16 +56,25 @@ class Product(db.Model):
         return found.all()
 
     @staticmethod
-    def find_by_name_or_id(identifier: (int | str), first: bool = False) -> Union[OptProduct, Optional[List["Product"]]]:
+    def find_by_name_or_id(
+        identifier: (int | str), first: bool = False
+    ) -> Union[OptProduct, Optional[List["Product"]]]:
         if common.isnumber(identifier):
             return Product.find_by_id(identifier)
         else:
             return Product.find_by_name(identifier, first)
 
-    # Returns product (if success), msg (indicating success)
     @staticmethod
     def make(name: str, price: str) -> Result:
+        """Returns newly created product if succeeded, error otherwise.
 
+        Args:
+            name (str): Name of product.
+            price (str): Price of product.
+
+        Returns:
+            Result: Newly created product and success/fail message.
+        """
         if name is None:
             return Result.error("Product name is missing.")
 
@@ -85,14 +90,21 @@ class Product(db.Model):
                 return Result.error("Invalid price value. (price < 0.00)")
 
             if Product.find_by_name(name=name, first=True):
-                return Result.error(f"A product with the given name already exists. (Product Name: {name})")
+                return Result.error(
+                    f"A product with the given name already exists. (Product Name: {name})"
+                )
 
-            return Result(Product(name=name, price=casted_price), f"Successfully added product: [{ name }, { casted_price }]")
+            return Result(
+                Product(name=name, price=casted_price),
+                f"Successfully added product: [{ name }, { casted_price }]",
+            )
 
         except ValueError:
-            return Result.error(f"The price value is invalid. (Incorrect type, expected float, got={type(price).__name__})")
+            return Result.error(
+                f"The price value is invalid. (Incorrect type, expected float, got={type(price).__name__})"
+            )
 
-     # Returns the change log
+    # Returns the change log
 
     def _edit_name(self, new_name: str) -> Result:
 
@@ -104,9 +116,11 @@ class Product(db.Model):
             return Result.error("The name cannot be a number.")
 
         if Product.find_by_name(name=new_name, first=True):
-            return Result.error(f"An existing product with the name '{new_name}' already exists.")
+            return Result.error(
+                f"An existing product with the name '{new_name}' already exists."
+            )
 
-        log = f'Name: { self.product_name } -> { new_name }'
+        log = f"Name: { self.product_name } -> { new_name }"
         self.product_name = new_name
         return Result.success(log)
 
@@ -118,38 +132,46 @@ class Product(db.Model):
         try:
             # Try casting
             _casted_new_price = float(new_price)
-            casted_new_price = float(f'{_casted_new_price:.2f}')
+            casted_new_price = float(f"{_casted_new_price:.2f}")
 
             # Check redundancy
             if math.isclose(self.product_price, casted_new_price):
                 return Result.error("Price redundant, no changes made")
 
-            log = f'Price: { self.product_price } -> { casted_new_price }'
+            log = f"Price: { self.product_price } -> { casted_new_price }"
             self.product_price = casted_new_price
             return Result.success(log)
 
         except ValueError:
-            return Result.error(f"The price value is invalid. (Incorrect type, expected float, got={type(new_price).__name__})")
+            return Result.error(
+                f"The price value is invalid. (Incorrect type, expected float, got={type(new_price).__name__})"
+            )
 
     # Edits the product and returns the change log
-    def edit(self,
-             new_name: Optional[str],
-             new_price: Optional[float]
-             ) -> Log:
+    def edit(self, new_name: Optional[str], new_price: Optional[float]) -> Log:
 
         log = Log()
 
-        if new_name is None \
-                and new_price is None:
+        if new_name is None and new_price is None:
             return log.error(Product.ERROR_EDIT_FAIL, "Nothing to edit.")
-            
+
         if new_name:
             result = self._edit_name(new_name=new_name)
-            log.addResult("Product", f"Product ID {self.product_id}", result, Product.ERROR_EDIT_FAIL)
+            log.addResult(
+                "Product",
+                f"Product ID {self.product_id}",
+                result,
+                Product.ERROR_EDIT_FAIL,
+            )
 
         if new_price:
             result = self._edit_price(new_price=new_price)
-            log.addResult("Product", f"Product ID {self.product_id}", result, Product.ERROR_EDIT_FAIL)
+            log.addResult(
+                "Product",
+                f"Product ID {self.product_id}",
+                result,
+                Product.ERROR_EDIT_FAIL,
+            )
 
         return log
 
@@ -165,9 +187,9 @@ class Product(db.Model):
         for machine_stock in self.machine_products:
             machine = machine_stock.vending_machine
             entry = {
-                'machine_id': machine.machine_id,
-                'location': machine.location,
-                'machine_name': machine.machine_name
+                "machine_id": machine.machine_id,
+                "location": machine.location,
+                "machine_name": machine.machine_name,
             }
             machines.append(entry)
 

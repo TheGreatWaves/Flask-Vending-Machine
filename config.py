@@ -1,6 +1,11 @@
-# Note that you WILL need to have the docker container running.
-# Execute run_docker.sh to set it up and have it running.
-# Once you do, the URI below should work perfectly.
+"""
+This contains all the configurations for the flask application.
+
+Note that you WILL need to have the docker container running.
+Execute run_docker.sh to set it up and have it running.
+Once you do, the URI below should work perfectly.
+"""
+
 
 mysql_user = "root"
 mysql_password = "vendingpass"
@@ -10,6 +15,12 @@ mysql_db = "vendingdb"
 """
 Configuration details of the flask app
 """
+
+
 class Config:
-    SQLALCHEMY_DATABASE_URI = f'mysql://{ mysql_user }:{ mysql_password }@{ mysql_host }/{ mysql_db }'
+    """Config class for the flask application."""
+
+    SQLALCHEMY_DATABASE_URI = (
+        f"mysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False

@@ -10,6 +10,7 @@ python = "^3.11"
 Flask = "^2.2.2"
 flask-sqlalchemy = "^3.0.2"
 pytest = "^7.2.1"
+pre-commit = "^3.0.1"
 
 [tool.poetry.group.dev.dependencies]
 Flask = "^2.2.2"
