@@ -12,7 +12,7 @@ Records stores a list of information about specific items
 class Record:
     Records: Dict[str, List[str]]
 
-    def __init__(self, records: "Record".Records = {}):  # noqa: ANN204
+    def __init__(self, records: Dict[str, List[str]] = {}):  # noqa: ANN204
         self.Records = records
 
     def __iadd__(self, other: "Record") -> "Record":
@@ -66,7 +66,7 @@ class Log:
 
     # Depending on the outcome of the result, if postive, the log will be added
     # accordingly to the entry specified, otherwise it will be under Error/<err_name>
-    def addResult(
+    def add_result(
         self, name: str, specific: str, result: Result, err_name: Optional[str] = None
     ) -> "Log":
         success = result.object

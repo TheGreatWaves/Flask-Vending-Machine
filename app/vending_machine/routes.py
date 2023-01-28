@@ -20,7 +20,7 @@ def create(location: str, name: str):
         db.session.add(machine)
         db.session.commit()
 
-    log.addResult(
+    log.add_result(
         name="Machine",
         specific=f"New Machine: {location}, {name}",
         result=result,
@@ -180,7 +180,7 @@ def remove_product_from_machine(machine_id: int, product_id: str):
             db.session.commit()
 
         return jsonify(
-            Log().addResult(
+            Log().add_result(
                 "Machine",
                 f"Machine ID {machine_id}",
                 result,
@@ -200,6 +200,6 @@ def remove_machine(machine_id: int):
 
         msg = target_machine.destroy()
         db.session.commit()
-        return jsonify(Log().add("Machine", f"Machine ID {machine_id}" , msg))
+        return jsonify(Log().add("Machine", f"Machine ID {machine_id}", msg))
 
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, machine_not_found_msg))
