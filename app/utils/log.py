@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypeAlias
 
 from app.utils.result import Result
 
@@ -7,28 +7,33 @@ from app.utils.result import Result
 Records stores a list of information about specific items
 """
 
+RecordsType: TypeAlias = Dict[str, List[str]]
+
 
 @dataclass
 class Record:
-    Records: Dict[str, List[str]]
+    records: RecordsType
 
-    def __init__(self, records: Dict[str, List[str]] = {}):  # noqa: ANN204
-        self.Records = records
+    def __init__(self, records: Optional[RecordsType] = None):  # noqa: ANN204
+        if records:
+            self.records = records
+        else:
+            self.records = {}
 
     def __iadd__(self, other: "Record") -> "Record":
-        for k, v in other.Records.items():
-            if record := self.Records.get(k):
+        for k, v in other.records.items():
+            if record := self.records.get(k):
                 record.extend(v)
             else:
-                self.Records[k] = v
+                self.records[k] = v
         return self
 
     def add(self, specific: str, new_record: str) -> None:
 
-        if record := self.Records.get(specific):
+        if record := self.records.get(specific):
             record.append(new_record)
         else:
-            self.Records[specific] = [new_record]
+            self.records[specific] = [new_record]
 
 
 """

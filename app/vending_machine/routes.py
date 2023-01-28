@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import Response, jsonify, request
 
 from app.extensions import db
 from app.models.vending_machine import Machine
@@ -9,8 +9,7 @@ from app.vending_machine import bp
 
 
 @bp.route("/create/<location>/<name>", methods=["POST"])
-def create(location: str, name: str):
-    # noqa: ANN201
+def create(location: str, name: str) -> Response:
     log = Log()
 
     result = Machine.make(location, name)
@@ -32,8 +31,7 @@ def create(location: str, name: str):
 
 @bp.route("/at/<location>", methods=["GET"], defaults={"name": None})
 @bp.route("/at/<location>/<name>", methods=["GET"])
-def get(location: str, name: str):
-    # noqa: ANN201
+def get(location: str, name: str) -> Response:
     if machine := Machine.find(location=location, name=name):
         return jsonify(machine)
     else:
@@ -52,8 +50,7 @@ Expects: Json{ 'stock_list':[ {product_id:<int>, quantity:<int>}, ... ] }
 
 
 @bp.route("/<int:machine_id>/add", methods=["POST"])
-def add_product_to_machine(machine_id: int):
-    # noqa: ANN201
+def add_product_to_machine(machine_id: int) -> Response:
     target_machine, machine_not_found_msg = Machine.find_by_id(machine_id)
     if target_machine:
 
@@ -73,8 +70,7 @@ def add_product_to_machine(machine_id: int):
 
 
 @bp.route("/<int:id>", methods=["GET"])
-def get_machine_by_id(id: int):
-    # noqa: ANN201
+def get_machine_by_id(id: int) -> Response:
     machine, machine_not_found_msg = Machine.find_by_id(id)
     if machine:
         return jsonify(machine)
@@ -101,8 +97,7 @@ We expect the json body in the form of:
 
 
 @bp.route("/<int:id>/edit", methods=["POST"])
-def edit_machine(id: int):
-    # noqa: ANN201
+def edit_machine(id: int) -> Response:
     machine, machine_not_found_msg = Machine.find_by_id(id)
     # Valid machine
     if machine:
@@ -135,8 +130,7 @@ def edit_machine(id: int):
 
 
 @bp.route("/all", methods=["GET"])
-def get_all_machines():
-    # noqa: ANN201
+def get_all_machines() -> Response:
     if machines := Machine.query.all():
         return jsonify(machines)
 
@@ -146,8 +140,7 @@ def get_all_machines():
 
 
 @bp.route("/<int:machine_id>/buy/<int:product_id>", methods=["POST"])
-def buy_product_from_machine(machine_id: int, product_id: (int | str)):
-    # noqa: ANN201
+def buy_product_from_machine(machine_id: int, product_id: (int | str)) -> Response:
     target_machine, machine_not_found_msg = Machine.find_by_id(machine_id)
 
     if target_machine:
@@ -169,8 +162,7 @@ def buy_product_from_machine(machine_id: int, product_id: (int | str)):
 
 
 @bp.route("/<int:machine_id>/remove/<product_id>", methods=["POST"])
-def remove_product_from_machine(machine_id: int, product_id: str):
-    # noqa: ANN201
+def remove_product_from_machine(machine_id: int, product_id: str) -> Response:
     target_machine, machine_not_found_msg = Machine.find_by_id(machine_id)
     if target_machine:
 
@@ -192,8 +184,7 @@ def remove_product_from_machine(machine_id: int, product_id: str):
 
 
 @bp.route("/<int:machine_id>/destroy", methods=["POST"])
-def remove_machine(machine_id: int):
-    # noqa: ANN201
+def remove_machine(machine_id: int) -> Response:
     target_machine, machine_not_found_msg = Machine.find_by_id(machine_id)
 
     if target_machine:

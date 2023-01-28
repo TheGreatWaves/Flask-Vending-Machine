@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import Response, jsonify, request
 
 from app.extensions import db
 from app.models.product import Product
@@ -16,8 +16,7 @@ Expected JSON:
 
 
 @bp.route("/create", methods=["POST"])
-def create_product():
-    # noqa: ANN201
+def create_product() -> Response:
     if content := request.get_json():
 
         product_name = content.get("product_name")
@@ -30,7 +29,7 @@ def create_product():
             db.session.commit()
 
         return jsonify(
-            Log().addResult(
+            Log().add_result(
                 "Product",
                 f"New Product: {product_name}, {product_price}",
                 result,
@@ -42,8 +41,7 @@ def create_product():
 
 
 @bp.route("/search/<identifier>", methods=["GET"])
-def search_product(identifier: str | int):
-    # noqa: ANN201
+def search_product(identifier: str | int) -> Response:
     if product := Product.find_by_name_or_id(identifier):
         return jsonify(product)
 
@@ -55,8 +53,7 @@ def search_product(identifier: str | int):
 
 
 @bp.route("/<int:product_id>", methods=["GET"])
-def get_product(product_id: int):
-    # noqa: ANN201
+def get_product(product_id: int) -> Response:
     if product := Product.find_by_id(product_id):
         return jsonify(product)
 
@@ -77,9 +74,7 @@ Expected JSON:
 
 
 @bp.route("/<int:product_id>/edit", methods=["POST"])
-def edit_product(product_id: int):
-
-    # noqa: ANN201
+def edit_product(product_id: int) -> Response:
     if product := Product.find_by_id(product_id):
 
         # Valid JSON body
@@ -103,8 +98,7 @@ def edit_product(product_id: int):
 
 
 @bp.route("/all", methods=["GET"])
-def get_all_products():
-    # noqa: ANN201
+def get_all_products() -> Response:
     if products := Product.query.all():
         return jsonify(products)
 
@@ -114,8 +108,7 @@ def get_all_products():
 
 
 @bp.route("/<int:product_id>/where", methods=["GET"])
-def get_machine_with_stock(product_id: int):
-    # noqa: ANN201
+def get_machine_with_stock(product_id: int) -> Response:
     if product := Product.find_by_id(product_id):
 
         if machines := product.found_in():
