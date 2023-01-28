@@ -46,7 +46,7 @@ def search_product(identifier):
     return jsonify(Log().error(Product.ERROR_NOT_FOUND, f"Product not found. (Identifier: {identifier})"))
 
 @bp.route("/<int:product_id>", methods=['GET'])
-def get_product(product_id):
+def get_product(product_id: int):
 
     if product := Product.find_by_id(product_id):
         return jsonify(product)
@@ -62,7 +62,7 @@ Expected JSON:
 """
 
 @bp.route("/<int:product_id>/edit", methods=['POST'])
-def edit_product(product_id):
+def edit_product(product_id: int):
 
     # Valid product
     if product := Product.find_by_id(product_id):
@@ -91,7 +91,7 @@ def get_all_products():
     return jsonify(Log().error(Product.ERROR_NOT_FOUND, "There are no existing products"))
 
 @bp.route("/<int:product_id>/where", methods=['GET'])
-def get_machine_with_stock(product_id):
+def get_machine_with_stock(product_id: int):
     
     if product := Product.find_by_id(product_id):
 

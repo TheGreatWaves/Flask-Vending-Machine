@@ -3,7 +3,7 @@ from app.extensions import db
 
 # Core
 from dataclasses import dataclass
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List, Dict, TypeAlias
 
 # Models
 from app.models import product, vending_machine
@@ -29,11 +29,11 @@ class MachineStock( db.Model ):
     quantity = db.Column( db.Integer, nullable=False )
 
     # Aliases
-    Quantity = int
-    ProductID = int
-    OptStock = Optional[ "MachineStock" ]
-    StockInfo = Tuple[ ProductID, Quantity ]
-    ListOfStockInfo = List[ StockInfo ]
+    Quantity: TypeAlias = int
+    ProductID: TypeAlias = int
+    OptStock: TypeAlias = Optional[ "MachineStock" ]
+    StockInfo: TypeAlias = Tuple[ ProductID, Quantity ]
+    ListOfStockInfo: TypeAlias = List[ StockInfo ]
 
     @staticmethod
     def get( machine_id: int, product_id: int ) -> OptStock:
