@@ -272,4 +272,4 @@ class Machine(db.Model):
     def destroy(self) -> str:
         self.remove_all_stock()
         db.session.delete(self)
-        return f"Machine ID {self.machine_id}", "Successfully delelted."
+        return "Successfully deleted."

@@ -200,6 +200,6 @@ def remove_machine(machine_id: int):
 
         msg = target_machine.destroy()
         db.session.commit()
-        return jsonify(Log().add("Machine", msg))
+        return jsonify(Log().add("Machine", f"Machine ID {machine_id}" , msg))
 
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, machine_not_found_msg))
