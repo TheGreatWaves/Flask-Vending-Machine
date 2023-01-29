@@ -106,7 +106,7 @@ pip install -r ./requirements.txt
             db.session.commit()
 
         # Used in conjunction with Log
-        log = Log().addResult("Machine", f"New Machine: {location}, {name}", result, Machine.ERROR_CREATE_FAIL)
+        log = Log().add_result("Machine", f"New Machine: {location}, {name}", result, Machine.ERROR_CREATE_FAIL)
 
         return jsonify(log)
     ```

@@ -180,11 +180,11 @@ class Machine(db.Model):
 
         if new_location:
             result = self._edit_location(new_location=new_location)
-            log.addResult("Edit", machine_info, result)
+            log.add_result("Edit", machine_info, result)
 
         if new_name:
             result = self._edit_name(new_name=new_name)
-            log.addResult("Edit", machine_info, result)
+            log.add_result("Edit", machine_info, result)
 
         if new_stock:
 

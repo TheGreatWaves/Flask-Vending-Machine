@@ -157,7 +157,7 @@ class Product(db.Model):
 
         if new_name:
             result = self._edit_name(new_name=new_name)
-            log.addResult(
+            log.add_result(
                 "Product",
                 f"Product ID {self.product_id}",
                 result,
@@ -166,7 +166,7 @@ class Product(db.Model):
 
         if new_price:
             result = self._edit_price(new_price=new_price)
-            log.addResult(
+            log.add_result(
                 "Product",
                 f"Product ID {self.product_id}",
                 result,
