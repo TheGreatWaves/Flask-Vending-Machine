@@ -51,10 +51,16 @@ jobs:
 
   docker-db:
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v2
-      - name: Build the db
-        run: docker-compose up -d
+      - name: Start database
+        uses: docker/compose-action@v1
+        with:
+          context: .
+          compose-file: docker-compose.yml
+          service: mysql
+          command: up -d
 
   test-and-coverage:
     needs: docker-db
