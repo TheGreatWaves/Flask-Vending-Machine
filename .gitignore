@@ -1,2 +1,5 @@
 ﻿__pycache__
 temp
+coverage.xml
+.coverage
+.idea

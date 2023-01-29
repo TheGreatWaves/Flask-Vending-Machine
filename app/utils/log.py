@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, TypeAlias
 
+from flask import Response
+
 from app.utils.result import Result
 
 """
@@ -35,6 +37,9 @@ class Record:
         else:
             self.records[specific] = [new_record]
 
+    def get(self, specific: str):
+        return self.records.get(specific)
+
 
 """
 A log contains a bunch of broad entries which contains records regarding the entry
@@ -42,46 +47,51 @@ An example of a broad entry: "Error", one of the records specific entry could be
 It can be used in conjuction with the Result class to help ease of logging (somewhat...)
 """
 
+LogsType = Dict[str, Record]
+
 
 @dataclass
 class Log:
-    Logs: Dict[str, Record]
+    logs: LogsType
 
-    def __init__(self) -> "Log":
-        self.Logs = {}
+    def __init__(self, log: Optional[LogsType] = None):
+        if log:
+            self.logs = log
+        else:
+            self.logs = {}
 
     # Creates a new broad entry. Note that
     # this returns a reference to the entry,
     # meaning we can directly call .add(<specific>, <info>)
     # without needing to supply the broad entry name again
     def entry(self, name: str) -> Record:
-        if record := self.Logs.get(name):
+        if record := self.logs.get(name):
             return record
         else:
-            self.Logs[name] = Record(records={})
-            return self.Logs[name]
+            self.logs[name] = Record(records={})
+            return self.logs[name]
 
     # Add entry to name/specific
     def add(self, name: str, specific: str, info: str) -> "Log":
-        if record := self.Logs.get(name):
+        if record := self.logs.get(name):
             record.add(specific, info)
         else:
-            self.Logs[name] = Record(records={specific: [info]})
+            self.logs[name] = Record(records={specific: [info]})
         return self
 
     # Depending on the outcome of the result, if postive, the log will be added
     # accordingly to the entry specified, otherwise it will be under Error/<err_name>
     def add_result(
-        self, name: str, specific: str, result: Result, err_name: Optional[str] = None
+            self, name: str, specific: str, result: Result, err_name: Optional[str] = None
     ) -> "Log":
         success = result.object
         msg = result.message
 
         if success:
-            if record := self.Logs.get(name):
+            if record := self.logs.get(name):
                 record.add(specific, msg)
             else:
-                self.Logs[name] = Record(records={specific: [msg]})
+                self.logs[name] = Record(records={specific: [msg]})
         else:
             if err_name:
                 self.error(specific=err_name, err=msg)
@@ -92,14 +102,44 @@ class Log:
 
     # You can use the += operator on logs to join them
     def __iadd__(self, other: "Log") -> "Log":
-        print(other)
-        for k, v in other.Logs.items():
-            if record := self.Logs.get(k):
+        for k, v in other.logs.items():
+            if record := self.logs.get(k):
                 record += v
             else:
-                self.Logs[k] = v
+                self.logs[k] = v
         return self
 
     # Built-in for ease of logging errors
     def error(self, specific: str, err: str) -> "Log":
         return self.add("Error", specific, err)
+
+    @staticmethod
+    def make_from_response(response: Response) -> "Log":
+        raw_logs: Dict = response.json.get("logs")
+        log: Log = Log()
+
+        if raw_logs is None:
+            return log
+
+        for broad, broad_records in raw_logs.items():
+            broad_entry: Record = log.entry(broad)
+            record = broad_records.get("records")
+            for specific, records in record.items():
+                broad_entry.records[specific] = records
+        return log
+
+    def has_entry(self, broad: str, specific: Optional[str] = None) -> bool:
+
+        if broad not in self.logs:
+            return False
+
+        if specific:
+            if self.logs[broad].get(specific):
+                return True
+            else:
+                return False
+
+        return True
+
+    def has_error(self, specific: Optional[str] = None) -> bool:
+        return self.has_entry(broad="Error", specific=specific)

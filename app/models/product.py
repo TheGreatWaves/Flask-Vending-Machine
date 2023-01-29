@@ -35,8 +35,8 @@ class Product(db.Model):
         self.product_price = price
 
     @staticmethod
-    def find_by_id(id: int) -> OptProduct:
-        return Product.query.get(id)
+    def find_by_id(product_id: int) -> OptProduct:
+        return db.session.get(Product, {"product_id": product_id})
 
     @staticmethod
     def find_by_name(

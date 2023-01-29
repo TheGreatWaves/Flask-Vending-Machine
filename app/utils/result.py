@@ -10,7 +10,7 @@ class Result:
     object: Optional[Any]
     message: ResultMessage
 
-    def __init__(self, _obj: Optional[Any], _message: str):  # noqa: ANN204
+    def __init__(self, _obj: Optional[Any], _message: str = ""):  # noqa: ANN204
         self.object = _obj
         self.message = _message
 
