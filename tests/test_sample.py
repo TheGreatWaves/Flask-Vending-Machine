@@ -4,6 +4,8 @@ from app.models.vending_machine import Machine
 
 def test_create_app() -> None:
     app = create_app()
-    reset_db(app=app)
-    all_machine_instances_count = len(Machine.query.all())
-    assert all_machine_instances_count == 0
+    reset_db(app)
+
+    with app.app_context():
+        number_of_products = len(Machine.query.all())
+        assert number_of_products == 0

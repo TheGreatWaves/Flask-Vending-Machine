@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
+import sqlalchemy
+
 from app.extensions import db
 from app.models.vending_machine_stock import MachineStock
 from app.utils import common
@@ -14,7 +16,7 @@ class Machine(db.Model):
     machine_id: int
     machine_name: str
     location: str
-    products: List[MachineStock]
+    products: sqlalchemy.orm.Mapped[List[MachineStock]]
     balance: float
 
     machine_id = db.Column(
@@ -46,14 +48,14 @@ class Machine(db.Model):
 
         if Machine.find(name=name, location=location):
             return Result.error(
-                f"A machine with given name and location already exists. (Location: { location }, Name: { name })"
+                f"A machine with given name and location already exists. (Location: {location}, Name: {name})"
             )
 
         new_machine = Machine(location=location, machine_name=name)
 
         return Result(
             new_machine,
-            f"Successfully added vending machine named '{name}' at '{ location }'!",
+            f"Successfully added vending machine named '{name}' at '{location}'!",
         )
 
     @staticmethod
@@ -74,7 +76,7 @@ class Machine(db.Model):
     def __find_by_location(location: str):  # noqa: ANN205
         exact_match = Machine.location == location
         similar_match = Machine.location.ilike(
-            f"%{ location }%"
+            f"%{location}%"
         )  # ilike is case insensitive
 
         return Machine.query.filter(exact_match or similar_match)
@@ -85,7 +87,7 @@ class Machine(db.Model):
 
     @staticmethod
     def find(
-        name: Optional[str] = None, location: Optional[str] = None
+            name: Optional[str] = None, location: Optional[str] = None
     ) -> Union[OptMachine, Optional[ListOfMachines]]:
 
         # Nothing given
@@ -140,7 +142,7 @@ class Machine(db.Model):
                 f"An existing machine with the name '{new_name}' already exists at '{self.location}'"
             )
 
-        log = f"{ self.machine_name } -> { new_name }"
+        log = f"{self.machine_name} -> {new_name}"
         self.machine_name = new_name
         return Result.success(log)
 
@@ -159,16 +161,16 @@ class Machine(db.Model):
                 f"An existing machine with the name '{self.machine_name}' already exists at '{new_location}'"
             )
 
-        log = f"{ self.location } -> { new_location }"
+        log = f"{self.location} -> {new_location}"
         self.location = new_location
         return Result.success(log)
 
     # Edits the machine and returns the change log
     def edit(
-        self,
-        new_name: Optional[str],
-        new_location: Optional[str],
-        new_stock: Optional[MachineStock.ListOfStockInfo],
+            self,
+            new_name: Optional[str],
+            new_location: Optional[str],
+            new_stock: Optional[MachineStock.ListOfStockInfo],
     ) -> Log:
 
         log = Log()
@@ -187,7 +189,6 @@ class Machine(db.Model):
             log.add_result("Edit", machine_info, result)
 
         if new_stock:
-
             # Delete current stock
             self.remove_all_stock()
 
