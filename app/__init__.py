@@ -4,7 +4,7 @@ This package contains function for creating the app and resetting the database.
 
 from flask import Flask
 
-from app.extensions import db, csrf
+from app.extensions import csrf, db
 from config import Config
 
 
