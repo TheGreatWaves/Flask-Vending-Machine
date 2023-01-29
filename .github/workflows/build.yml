@@ -53,14 +53,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v2
-      - name: Start database
-        uses: docker/compose-action@v1
+      - uses: actions/checkout@v3
+      - uses: isbang/compose-action@v1.4.1
         with:
-          context: .
-          compose-file: docker-compose.yml
-          service: mysql
-          command: up -d
+          compose-file: "./docker-compose.yml"
 
   test-and-coverage:
     needs: docker-db
