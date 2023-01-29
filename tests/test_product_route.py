@@ -5,13 +5,21 @@ from app.models.product import Product
 from app.utils.log import Log
 
 
+def expect_error(response, err: str = None):
+    return Log.make_from_response(response=response).has_error(err)
+
+
 @pytest.mark.parametrize(
-    "product_name,product_price",
-    [("some_name", 123.0), ("HeyMANWHATSUP", 91232), ("Brrr", 0.12)],
+    "product_info",
+    [
+        {"product_name": "some_name", "product_price": 123.0},
+        {"product_name": "hello", "product_price": 123.0},
+        {"product_name": "wow", "product_price": 256},
+    ],
 )
-def test_product_creation(app, client, product_name, product_price):
-    # product_name = "sample_name"
-    # product_price = 100.0
+def test_product_creation(app, client, product_info):
+    product_name = product_info["product_name"]
+    product_price = product_info["product_price"]
     response = client.post(
         "/product/create",
         json={"product_name": product_name, "product_price": product_price},
@@ -36,13 +44,39 @@ def test_product_creation(app, client, product_name, product_price):
         assert db.session.get(Product, {"product_id": 1}) is None
 
 
-def test_product_creation_error(app, client):
-    product_name = "sample_name"
+@pytest.mark.parametrize(
+    "product_info",
+    [
+        {"product_name": 123, "product_price": 123.0},
+        {"product_name": "wow", "product_price": "what?"},
+        {"product_price": 123.0},
+        {"product_name": "name"},
+        {"product_name": "name", "product_price": -123.0},
+    ],
+)
+def test_product_creation_error(app, client, product_info):
+    product_name = product_info.get("product_name")
+    product_price = product_info.get("product_price")
+
+    fail_response = client.post(
+        "/product/create",
+        json={"product_name": product_name, "product_price": product_price},
+    )
+
+    assert Log.make_from_response(response=fail_response).has_error(
+        Product.ERROR_CREATE_FAIL
+    )
+
+
+def test_product_creation_duplicate_error(client):
+    product_name = "product_1"
     product_price = 100.0
+
     _ = client.post(
         "/product/create",
         json={"product_name": product_name, "product_price": product_price},
     )
+
     fail_response = client.post(
         "/product/create",
         json={"product_name": product_name, "product_price": product_price},
@@ -170,11 +204,10 @@ def test_edit_product(app, client):
 
 
 def test_edit_product_fail(app, client):
+
     # Product not found
     edit_response = client.post("/product/1/edit", json={})
-    assert Log.make_from_response(response=edit_response).has_error(
-        Product.ERROR_NOT_FOUND
-    )
+    assert expect_error(edit_response, Product.ERROR_NOT_FOUND)
 
     original_name = "product_1"
     original_price = 100.00
@@ -182,20 +215,41 @@ def test_edit_product_fail(app, client):
         "/product/create",
         json={"product_name": original_name, "product_price": original_price},
     )
-    assert not Log.make_from_response(response=create_response).has_error()
+    assert not expect_error(response=create_response)
 
     # Redundant name and price
     edit_response = client.post(
         "/product/1/edit",
         json={"product_name": original_name, "product_price": original_price},
     )
-    assert Log.make_from_response(response=edit_response).has_error(
-        Product.ERROR_EDIT_FAIL
-    )
+    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
 
     # Invalid JSON body
     edit_response = client.post("/product/1/edit", json={})
-    assert Log.make_from_response(response=edit_response).has_error("JSON Error")
+    assert expect_error(response=edit_response, err="JSON Error")
+
+    # Name can not be a number
+    edit_response = client.post("/product/1/edit", json={"product_name": 123})
+    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
+
+    # Name clash with another existing product
+    _ = client.post(
+        "/product/create",
+        json={"product_name": "taken_name", "product_price": 100.0},
+    )
+
+    edit_response = client.post("/product/1/edit", json={"product_name": "taken_name"})
+    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
+
+    # Invalid price data type
+    edit_response = client.post("/product/1/edit", json={"product_price": "john"})
+    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
+
+    # Nothing to edit
+    edit_response = client.post(
+        "/product/1/edit", json={"product_name": None, "product_price": None}
+    )
+    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
 
 
 def test_get_all_products(app, client):
