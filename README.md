@@ -29,7 +29,7 @@
 docker-compose up
 ```
 
-Install requirements: 
+Install requirements:
 ```
 pip install -r ./requirements.txt
 ```
@@ -50,19 +50,19 @@ pip install -r ./requirements.txt
 
 ```
 .
-├── app                    
+├── app
 │   ├── models
 │   │     └── ...                 # All table declarations
 │   ├── utils
 │   │     ├── __init__.py         # utils module
-│   │     └── ...         
+│   │     └── ...
 │   ├── product
 │   │     ├── __init__.py         # product module
 │   │     └── routes.py           # routes for product
 │   ├── vending_machine
 │   │     ├── __init__.py         # vending_machine module
 │   │     └── routes.py           # routes for vending_machine
-│   └── ...       
+│   └── ...
 ├── __init__.py                   # app module, blueprints MUST be registered here
 ├── config.py                     # flask app config
 ├── reset_db.py
@@ -86,13 +86,13 @@ pip install -r ./requirements.txt
 
         if common.isnumber(name):
             return Result.error("Name can not be a number.")
-    
+
         if Machine.find(name=name, location=location):
             return Result.error( f"A machine with given name and location already exists. (Location: { location }, Name: { name })")
 
         new_machine = Machine(location=location, machine_name=name)
 
-        return Result(new_machine, f"Successfully added vending machine named '{name}' at '{ location }'!") 
+        return Result(new_machine, f"Successfully added vending machine named '{name}' at '{ location }'!")
     ```
   - Example of usage
     ```python
@@ -100,13 +100,13 @@ pip install -r ./requirements.txt
     def create(location, name):
 
         result = Machine.make(location, name)
-   
+
         if machine.object
             db.session.add(machine.object
             db.session.commit()
 
         # Used in conjunction with Log
-        log = Log().addResult("Machine", f"New Machine: {location}, {name}", result, Machine.ERROR_CREATE_FAIL)
+        log = Log().add_result("Machine", f"New Machine: {location}, {name}", result, Machine.ERROR_CREATE_FAIL)
 
         return jsonify(log)
     ```
@@ -137,7 +137,7 @@ pip install -r ./requirements.txt
           }
       }
       ```
-      
+
 ## JSON Expectations
 
 > _**NOTE**_: This is not ideal since normally we should never get a malformed JSON because it should have been built from our front end properly.
