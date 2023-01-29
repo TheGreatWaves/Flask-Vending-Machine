@@ -87,7 +87,7 @@ class Machine(db.Model):
 
     @staticmethod
     def find(
-            name: Optional[str] = None, location: Optional[str] = None
+        name: Optional[str] = None, location: Optional[str] = None
     ) -> Union[OptMachine, Optional[ListOfMachines]]:
 
         # Nothing given
@@ -167,10 +167,10 @@ class Machine(db.Model):
 
     # Edits the machine and returns the change log
     def edit(
-            self,
-            new_name: Optional[str],
-            new_location: Optional[str],
-            new_stock: Optional[MachineStock.ListOfStockInfo],
+        self,
+        new_name: Optional[str],
+        new_location: Optional[str],
+        new_stock: Optional[MachineStock.ListOfStockInfo],
     ) -> Log:
 
         log = Log()
