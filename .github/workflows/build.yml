@@ -42,7 +42,7 @@ jobs:
         uses: psf/black@stable
         with:
           version: "22.3.0"
-          
+
   docker-db:
     runs-on: ubuntu-latest
     steps:
