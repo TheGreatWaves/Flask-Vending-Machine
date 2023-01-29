@@ -103,8 +103,8 @@ class Log:
     # You can use the += operator on logs to join them
     def __iadd__(self, other: "Log") -> "Log":
         for k, v in other.logs.items():
-            if record := self.logs.get(k):
-                record += v
+            if self.logs.get(k):
+                self.logs[k] += v
             else:
                 self.logs[k] = v
         return self
