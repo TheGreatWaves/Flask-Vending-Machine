@@ -37,7 +37,7 @@ class Record:
         else:
             self.records[specific] = [new_record]
 
-    def get(self, specific: str):
+    def get(self, specific: str) -> List[str]:
         return self.records.get(specific)
 
 
@@ -54,7 +54,7 @@ LogsType = Dict[str, Record]
 class Log:
     logs: LogsType
 
-    def __init__(self, log: Optional[LogsType] = None):
+    def __init__(self, log: Optional[LogsType] = None):  # noqa: ANN204
         if log:
             self.logs = log
         else:
@@ -82,7 +82,7 @@ class Log:
     # Depending on the outcome of the result, if postive, the log will be added
     # accordingly to the entry specified, otherwise it will be under Error/<err_name>
     def add_result(
-            self, name: str, specific: str, result: Result, err_name: Optional[str] = None
+        self, name: str, specific: str, result: Result, err_name: Optional[str] = None
     ) -> "Log":
         success = result.object
         msg = result.message

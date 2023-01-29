@@ -10,6 +10,7 @@ def test_create_fresh_app(app):
         number_of_machines = len(Machine.query.all())
         assert number_of_products == 0 and number_of_machines == 0
 
+
 def test_app_db_drop(app):
     with app.app_context():
         machine, _ = Machine.make("some_location", "some_name")

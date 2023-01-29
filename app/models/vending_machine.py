@@ -59,10 +59,10 @@ class Machine(db.Model):
         )
 
     @staticmethod
-    def find_by_id(id: int) -> Result:
-        if machine := Machine.query.get(id):
+    def find_by_id(machine_id: int) -> Result:
+        if machine := db.session.get(Machine, {"machine_id": machine_id}):
             return Result(machine)
-        return Result.error(f"No machine with id {id} found.")
+        return Result.error(f"No machine with id {machine_id} found.")
 
     @staticmethod
     def __find_by_name(name: str):  # noqa: ANN205
