@@ -42,3 +42,10 @@ jobs:
         uses: psf/black@stable
         with:
           version: "22.3.0"
+          
+  docker-db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build the db
+        run: docker-compose up -d
