@@ -111,7 +111,7 @@ class Machine(db.Model):
         if name:
             return Machine.find_by_name(name=name)
 
-    def add_product(self, product_id: (int | str), quantity: int) -> Result:
+    def add_product(self, product_id: int, quantity: int) -> Result:
 
         if not isinstance(quantity, int):
             return Result.error(

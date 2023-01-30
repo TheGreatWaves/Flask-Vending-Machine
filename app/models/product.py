@@ -65,7 +65,7 @@ class Product(db.Model):
             return Product.find_by_name(identifier, first)
 
     @staticmethod
-    def make(name: str, price: str) -> Result:
+    def make(name: str, price: float) -> Result:
         """Returns newly created product if succeeded, error otherwise.
 
         Args:
