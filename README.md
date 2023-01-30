@@ -1,5 +1,9 @@
 # Vending Machine
 
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=TheGreatWaves_SWE-HW1&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=TheGreatWaves_SWE-HW1)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=TheGreatWaves_SWE-HW1&metric=coverage)](https://sonarcloud.io/summary/new_code?id=TheGreatWaves_SWE-HW1)
+
+
 ## Supported APIs
 
 > **Machine**
