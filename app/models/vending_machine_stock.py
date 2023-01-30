@@ -34,6 +34,14 @@ class MachineStock(db.Model):
     StockInfo: TypeAlias = Tuple[ProductID, ProductQuantity]
     ListOfStockInfo: TypeAlias = List[StockInfo]
 
+    def to_dict(self) -> dict:
+        return {
+            "product_id": self.product_id,
+            "product_name": self.product_name,
+            "product_price": self.product_price,
+            "quantity": self.quantity,
+        }
+
     @staticmethod
     def get(machine_id: int, product_id: int) -> OptStock:
         return MachineStock.query.filter_by(
@@ -43,22 +51,27 @@ class MachineStock(db.Model):
     @staticmethod
     def make(machine_id: int, product_id: int, quantity: int) -> Result:
 
+        if not isinstance(product_id, int):
+            return Result.error(
+                f"Invalid product ID type. Expected int, got={type(product_id).__name__}"
+            )
+
+        if not isinstance(machine_id, int):
+            return Result.error(
+                f"Invalid machine ID type. Expected int, got={type(machine_id).__name__}"
+            )
+
         target_machine, machine_not_found_msg = vending_machine.Machine.find_by_id(
             machine_id
         )
         if target_machine is None:
             return Result.error(machine_not_found_msg)
 
-        if not isinstance(product_id, int):
-            return Result.error(
-                f"Invalid product ID type. Expected int, got={type(product_id).__name__}"
-            )
-
         target_product = product.Product.find_by_name_or_id(
             identifier=product_id, first=True
         )
         if target_product is None:
-            return Result.error(f"No product with ID { product_id } found.")
+            return Result.error(f"No product with ID {product_id} found.")
 
         if quantity <= 0:
             return Result.error(f"Invalid quantity. ({quantity} <= 0)")
@@ -69,7 +82,7 @@ class MachineStock(db.Model):
             product_id=product_id,
         ):
             return Result.error(
-                f"An existing entry already exists for machine { machine_id } and product { target_product.product_id }"
+                f"An existing entry already exists for machine {machine_id} and product {target_product.product_id}"
             )
 
         return Result(
@@ -78,7 +91,7 @@ class MachineStock(db.Model):
                 product_id=target_product.product_id,
                 quantity=quantity,
             ),
-            f"Added product { target_product.product_id } to machine { machine_id } successfully. (qt={quantity})",
+            f"Added product {target_product.product_id} to machine {machine_id} successfully. (qt={quantity})",
         )
 
     @property

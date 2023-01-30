@@ -8,7 +8,7 @@ JSON_ERROR = Log().error("JSON Error", "Invalid JSON body")
 
 
 def isnumber(s: str) -> bool:
-    if isinstance(s, int):
+    if isinstance(s, int) or isinstance(s, float):
         return True
 
     number = s
