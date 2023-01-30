@@ -93,11 +93,6 @@ class Machine(db.Model):
         name: Optional[str] = None, location: Optional[str] = None
     ) -> Union[OptMachine, Optional[ListOfMachines]]:
 
-        # Nothing given
-        if name is None and location is None:
-            return None
-
-        # Only name given
         if name and location:
             return (
                 Machine.__find_by_location(location=location)
@@ -105,11 +100,14 @@ class Machine(db.Model):
                 .first()
             )
 
+        # Only name given
         if location:
             return Machine.find_by_location(location=location)
 
         if name:
             return Machine.find_by_name(name=name)
+
+        return None
 
     def add_product(self, product_id: int, quantity: int) -> Result:
 

@@ -43,6 +43,10 @@ class Tester:
 
     @staticmethod
     def expect_error(
-        response: TestResponse, expected_error: Optional[str] = None
+        response: TestResponse,
+        expected_error: Optional[str] = None,
+        value: Optional[str] = None,
     ) -> bool:
-        return Log.make_from_response(response=response).has_error(expected_error)
+        return Log.make_from_response(response=response).has_error(
+            specific=expected_error, value=value
+        )

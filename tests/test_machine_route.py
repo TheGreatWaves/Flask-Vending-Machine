@@ -119,26 +119,59 @@ def test_add_product_to_machine(client):
         response=add_response
     ).has_entry(broad="Product", specific="Product ID 1")
 
-
-def test_add_product_to_machine_fail(client):
-    tester = MachineTest(client=client)
-
-    # Machine not found
-    add_response = tester.add_product_to_machine(
+    add_more_response = tester.add_product_to_machine(
         machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
     )
-    assert MachineTest.expect_error(add_response, Machine.ERROR_NOT_FOUND)
 
-    # Invalid json
+    assert MachineTest.no_error(add_response) and Log.make_from_response(
+        response=add_more_response
+    ).has_entry(broad="Product", specific="Product ID 1")
+
+
+@pytest.mark.parametrize(
+    "mid, json, expected, value",
+    [
+        (
+            2,
+            {"stock_list": [{"product_id": 1, "quantity": 10}]},
+            Machine.ERROR_NOT_FOUND,
+            None,
+        ),
+        (
+            1,
+            {"stock_list": [{"product_id": 1, "quantity": "string"}]},
+            "Product ID 1",
+            "Invalid quantity type. Expect int, got=str",
+        ),
+        (
+            1,
+            {"stock_list": [{"product_id": 1, "quantity": 123.4}]},
+            "Product ID 1",
+            "Invalid quantity type. Expect int, got=float",
+        ),
+        (1, {}, "JSON Error", None),
+        (
+            1,
+            {"stock_list": [{"product_id": 1, "quantity": -10}]},
+            "Product ID 1",
+            "Quantity can not be negative. (got -10)",
+        ),
+    ],
+)
+def test_add_product_to_machine_fail(
+    client, mid: int, json: Dict[str, Any], expected: str, value: str
+):
+    tester = MachineTest(client=client)
     _ = client.post(
         "/product/create",
         json={"product_name": "product_1", "product_price": 100.00},
     )
     _ = tester.create_machine(location="some_location", name="some_name")
 
-    add_response = tester.add_product_to_machine(machine_id=1, json={})
-
-    assert MachineTest.expect_error(response=add_response, expected_error="JSON Error")
+    add_response = tester.add_product_to_machine(machine_id=mid, json=json)
+    assert MachineTest.expect_error(
+        response=add_response, expected_error=expected, value=value
+    )
 
 
 def test_get_machine_by_id(client):

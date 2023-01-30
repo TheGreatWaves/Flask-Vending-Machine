@@ -133,18 +133,25 @@ class Log:
                 broad_entry.records[specific] = records
         return log
 
-    def has_entry(self, broad: str, specific: Optional[str] = None) -> bool:
+    def has_entry(
+        self, broad: str, specific: Optional[str] = None, value: Optional[str] = None
+    ) -> bool:
 
         if broad not in self.logs:
             return False
 
+        # please excuse this
         if specific:
-            if self.logs[broad].get(specific):
+            if found_values := self.logs[broad].get(specific):
+                if value:
+                    return value in found_values
                 return True
             else:
                 return False
 
         return True
 
-    def has_error(self, specific: Optional[str] = None) -> bool:
-        return self.has_entry(broad="Error", specific=specific)
+    def has_error(
+        self, specific: Optional[str] = None, value: Optional[str] = None
+    ) -> bool:
+        return self.has_entry(broad="Error", specific=specific, value=value)
