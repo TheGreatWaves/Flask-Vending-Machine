@@ -8,6 +8,7 @@ from app.utils.result import Result
 """
 Records stores a list of information about specific items
 """
+from werkzeug.test import TestResponse
 
 RecordsType: TypeAlias = Dict[str, List[str]]
 
@@ -114,9 +115,13 @@ class Log:
         return self.add("Error", specific, err)
 
     @staticmethod
-    def make_from_response(response: Response) -> "Log":
-        raw_logs: Dict = response.json.get("logs")
+    def make_from_response(response: Response | TestResponse) -> "Log":
         log: Log = Log()
+
+        if not isinstance(response.json, dict):
+            return log
+
+        raw_logs: Dict = response.json.get("logs")
 
         if raw_logs is None:
             return log
