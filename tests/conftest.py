@@ -1,17 +1,17 @@
 import pytest
 
 from app import create_app, reset_db
+from config import Config
+
+
+class AppTestConfig(Config):
+    TESTING = True
+    WTF_CSRF_ENABLED = False
 
 
 @pytest.fixture()
 def app():
-    app = create_app()
-
-    app.config.update(
-        {
-            "TESTING": True,
-        }
-    )
+    app = create_app(config_class=AppTestConfig)
     reset_db(app=app)
     yield app
 

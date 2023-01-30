@@ -4,12 +4,15 @@ This package contains function for creating the app and resetting the database.
 
 from flask import Flask
 
-from app.extensions import db
+from app.extensions import csrf, db
 from config import Config
 
 
 def create_app(config_class: Config = Config) -> Flask:
     app = Flask(__name__)
+
+    # CSRF protection
+    csrf.init_app(app=app)
 
     # Load config over
     app.config.from_object(config_class)
