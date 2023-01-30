@@ -69,9 +69,9 @@ def add_product_to_machine(machine_id: int) -> Response:
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, machine_not_found_msg))
 
 
-@bp.route("/<int:id>", methods=["GET"])
-def get_machine_by_id(id: int) -> Response:
-    machine, machine_not_found_msg = Machine.find_by_id(id)
+@bp.route("/<int:machine_id>", methods=["GET"])
+def get_machine_by_id(machine_id: int) -> Response:
+    machine, machine_not_found_msg = Machine.find_by_id(machine_id)
     if machine:
         return jsonify(machine)
 
@@ -96,9 +96,9 @@ We expect the json body in the form of:
 """
 
 
-@bp.route("/<int:id>/edit", methods=["POST"])
-def edit_machine(id: int) -> Response:
-    machine, machine_not_found_msg = Machine.find_by_id(id)
+@bp.route("/<int:machine_id>/edit", methods=["POST"])
+def edit_machine(machine_id: int) -> Response:
+    machine, machine_not_found_msg = Machine.find_by_id(machine_id)
     # Valid machine
     if machine:
 
@@ -131,7 +131,8 @@ def edit_machine(id: int) -> Response:
 
 @bp.route("/all", methods=["GET"])
 def get_all_machines() -> Response:
-    if machines := Machine.query.all():
+    machines = Machine.query.all()
+    if machines:
         return jsonify(machines)
 
     return jsonify(

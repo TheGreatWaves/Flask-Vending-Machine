@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import pytest
 from flask.testing import FlaskClient
@@ -41,5 +42,7 @@ class Tester:
         return not Log.make_from_response(response=response).has_error()
 
     @staticmethod
-    def expect_error(response: TestResponse, expected_error: str) -> bool:
+    def expect_error(
+        response: TestResponse, expected_error: Optional[str] = None
+    ) -> bool:
         return Log.make_from_response(response=response).has_error(expected_error)

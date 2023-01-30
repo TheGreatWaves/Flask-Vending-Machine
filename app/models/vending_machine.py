@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-import sqlalchemy
-
 from app.extensions import db
 from app.models.vending_machine_stock import MachineStock
 from app.utils import common
@@ -16,7 +14,7 @@ class Machine(db.Model):
     machine_id: int
     machine_name: str
     location: str
-    products: sqlalchemy.orm.Mapped[List[MachineStock]]
+    machine_products: List[MachineStock]
     balance: float
 
     machine_id = db.Column(
@@ -36,6 +34,11 @@ class Machine(db.Model):
     ERROR_NOT_FOUND = "Machine Not Found"
     ERROR_CREATE_FAIL = "Machine Creation Error"
     ERROR_REMOVE_PRODUCT = "Machine Product Removal Error"
+
+    @property
+    def machine_products(self) -> List[MachineStock]:
+        machines = MachineStock.query.filter_by(machine_id=self.machine_id).all()
+        return [machine.to_dict() for machine in machines]
 
     @staticmethod
     def make(location: str, name: str) -> Result:

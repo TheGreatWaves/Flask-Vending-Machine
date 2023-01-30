@@ -34,6 +34,14 @@ class MachineStock(db.Model):
     StockInfo: TypeAlias = Tuple[ProductID, ProductQuantity]
     ListOfStockInfo: TypeAlias = List[StockInfo]
 
+    def to_dict(self) -> dict:
+        return {
+            "product_id": self.product_id,
+            "product_name": self.product_name,
+            "product_price": self.product_price,
+            "quantity": self.quantity,
+        }
+
     @staticmethod
     def get(machine_id: int, product_id: int) -> OptStock:
         return MachineStock.query.filter_by(
