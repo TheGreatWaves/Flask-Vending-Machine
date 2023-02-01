@@ -38,7 +38,7 @@ def get(location: str, name: str) -> Response:
         return jsonify(
             Log().error(
                 Machine.ERROR_NOT_FOUND,
-                f"No machine found. (Location: { location }, Name: { name })",
+                f"No machine found. (Location: {location}, Name: {name})",
             )
         )
 
@@ -55,7 +55,6 @@ def add_product_to_machine(machine_id: int) -> Response:
     if target_machine:
 
         if content := request.get_json():
-
             raw_stock_list = content.get("stock_list")
             stock_list = MachineStock.process_raw(raw_stock_list)
             log = target_machine.add_products(stocks=stock_list)
@@ -104,7 +103,6 @@ def edit_machine(machine_id: int) -> Response:
 
         # Valid JSON body
         if content := request.get_json():
-
             new_name = content.get("machine_name")
             new_location = content.get("location")
             # Type: Optional[ List[ Dict[ str, str ] ] ]
@@ -148,14 +146,13 @@ def buy_product_from_machine(machine_id: int, product_id: (int | str)) -> Respon
 
         # Valid JSON body
         if content := request.get_json():
-
             payment: float = content.get("payment")
 
-            change, message = target_machine.buy_product(
+            purchase_log = target_machine.buy_product(
                 product_id=product_id, payment=payment
             )
 
-            return jsonify(Change=change, Message=message)
+            return jsonify(purchase_log)
 
         return jsonify(common.JSON_ERROR)
 
@@ -189,7 +186,6 @@ def remove_machine(machine_id: int) -> Response:
     target_machine, machine_not_found_msg = Machine.find_by_id(machine_id)
 
     if target_machine:
-
         msg = target_machine.destroy()
         db.session.commit()
         return jsonify(Log().add("Machine", f"Machine ID {machine_id}", msg))

@@ -34,6 +34,8 @@ class Machine(db.Model):
     ERROR_NOT_FOUND = "Machine Not Found"
     ERROR_CREATE_FAIL = "Machine Creation Error"
     ERROR_REMOVE_PRODUCT = "Machine Product Removal Error"
+    ERROR_EDIT_FAIL = "Machine Edit Error"
+    ERROR_PURCHASE_FAIL = "Machine Purchase Error"
 
     @property
     def machine_products(self) -> List[MachineStock]:
@@ -152,7 +154,7 @@ class Machine(db.Model):
 
         # Check redundancy
         if self.location == new_location:
-            return Result.error("Location redundant, no changes made")
+            return Result.error("Location redundant, no changes made.")
 
         if common.isnumber(new_location):
             return Result.error("Location can not be numeric.")
@@ -176,18 +178,22 @@ class Machine(db.Model):
 
         log = Log()
 
-        if new_name is None and new_location is None and new_stock is None:
-            return Log().error("Edit Error", "Nothing to edit")
+        nothing_to_edit = (
+            new_name is None and new_location is None and new_stock is None
+        )
+
+        if nothing_to_edit:
+            return Log().error(Machine.ERROR_EDIT_FAIL, "Nothing to edit.")
 
         machine_info = f"Machine ID {self.machine_id}"
 
         if new_location:
             result = self._edit_location(new_location=new_location)
-            log.add_result("Edit", machine_info, result)
+            log.add_result("Edit", machine_info, result, Machine.ERROR_EDIT_FAIL)
 
         if new_name:
             result = self._edit_name(new_name=new_name)
-            log.add_result("Edit", machine_info, result)
+            log.add_result("Edit", machine_info, result, Machine.ERROR_EDIT_FAIL)
 
         if new_stock:
             # Delete current stock
@@ -200,7 +206,7 @@ class Machine(db.Model):
 
     def add_products(self, stocks: Optional[MachineStock.ListOfStockInfo]) -> Log:
         if stocks is None:
-            return Log().error("Product Error", "No product(s) provided.")
+            return Log()
 
         log = Log()
 
@@ -226,11 +232,11 @@ class Machine(db.Model):
         db.session.execute(delete_stock)
 
     # Returns ( Change, Message )
-    def buy_product(self, product_id: int, payment: float) -> Result:
-
+    def buy_product(self, product_id: int, payment: float) -> Log:
         if payment is None:
-            return Result.error("No payment received.")
+            return Log().error(Machine.ERROR_PURCHASE_FAIL, "No payment received.")
 
+        log: Log = Log().add(name="Transaction", specific="Change", info=str(payment))
         casted_payment: float
         try:
             # Ideally we should never get an
@@ -238,28 +244,46 @@ class Machine(db.Model):
             casted_payment = float(payment)
 
         except ValueError:
-            return Result(payment, "Invalid payment type.")
+            return log.error(Machine.ERROR_PURCHASE_FAIL, "Invalid payment type.")
 
-        if product_stock := MachineStock.get(self.machine_id, product_id):
+        product_stock = MachineStock.get(self.machine_id, product_id)
+        product_found_in_machine = product_stock is not None
+
+        if product_found_in_machine:
 
             if product_stock.out_of_stock():
-                return Result(casted_payment, "Product is out of stock.")
+                return log.error(
+                    Machine.ERROR_PURCHASE_FAIL, "Product is out of stock."
+                )
 
-            if (price := product_stock.product.product_price) > casted_payment:
-                return Result(
-                    casted_payment,
-                    f"Not enough money, costs {price} Baht, got {casted_payment} Baht.",
+            price = product_stock.product.product_price
+            payment_insufficient = price > casted_payment
+
+            if payment_insufficient:
+                return log.error(
+                    Machine.ERROR_PURCHASE_FAIL,
+                    f"Not enough money, costs {float(price)} Baht, got {float(payment)} Baht.",
                 )
             else:
                 product_stock.decrease_stock()
                 self.balance = float(self.balance) + float(price)
                 db.session.commit()
-                return Result(
-                    casted_payment - float(price), "Successfully bought product."
+                return (
+                    Log()
+                    .add(
+                        name="Transaction",
+                        specific="Success",
+                        info="Successfully bought product.",
+                    )
+                    .add(
+                        name="Transaction",
+                        specific="Change",
+                        info=str(casted_payment - float(price)),
+                    )
                 )
 
-        # Product not found, product out of stock
-        return Result(payment, "Product is not in stock.")
+        # Product not found, product not in inventory
+        return log.error(Machine.ERROR_PURCHASE_FAIL, "Product is not in stock.")
 
     def remove_stock(self, product_id: id) -> Result:
         if stock := MachineStock.get(machine_id=self.machine_id, product_id=product_id):

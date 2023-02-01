@@ -1,60 +1,20 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import pytest
-from werkzeug.test import TestResponse
 
 from app.models.vending_machine import Machine
-from app.utils.log import Log
-from tests.conftest import Tester, save_response
+from tests.fixtures.machine_tester import MachineTester
+from tests.fixtures.product_tester import ProductTester
 
 
 @pytest.fixture
-def tester(client):
-    return MachineTest(client=client)
+def machine_tester(client):
+    return MachineTester(client=client)
 
 
-class MachineTest(Tester):
-    @save_response
-    def create_machine(self, location: str, name: str) -> TestResponse:
-        return self.client.post(f"/machine/create/{location}/{name}")
-
-    @save_response
-    def find_machine(self, location: str, name: Optional[str] = None) -> TestResponse:
-        if name:
-            return self.client.get(f"/machine/at/{location}/{name}")
-        return self.client.get(f"/machine/at/{location}")
-
-    @save_response
-    def add_product_to_machine(
-        self, machine_id: int, json: Dict[str, Any]
-    ) -> TestResponse:
-        return self.client.post(f"/machine/{machine_id}/add", json=json)
-
-    @save_response
-    def get_machine_by_id(self, machine_id: int) -> TestResponse:
-        return self.client.get(f"/machine/{machine_id}")
-
-    @save_response
-    def edit_machine(self, machine_id: int, json: Dict[str, Any]) -> TestResponse:
-        return self.client.post(f"/machine/{machine_id}/edit", json=json)
-
-    @save_response
-    def get_all_machines(self) -> TestResponse:
-        return self.client.get("/machine/all")
-
-    @save_response
-    def buy_product_from_machine(
-        self, machine_id: int, product_id: int, json: Dict[str, Any]
-    ):
-        return self.client.post(f"/machine/{machine_id}/buy/{product_id}", json=json)
-
-    @save_response
-    def remove_product_from_machine(self, machine_id: int, product_id: int):
-        return self.client.post(f"/machine/{machine_id}/remove/{product_id}")
-
-    @save_response
-    def remove_machine(self, machine_id: int):
-        return self.client.post(f"/machine/{machine_id}/destroy")
+@pytest.fixture
+def product_tester(client):
+    return ProductTester(client=client)
 
 
 @pytest.mark.parametrize(
@@ -66,77 +26,85 @@ class MachineTest(Tester):
         ("Atlantis", "John"),
     ],
 )
-def test_create_machine(tester, machine_location, machine_name):
-    _ = tester.create_machine(machine_location, machine_name)
-    assert tester.no_error()
+def test_create_machine(machine_tester, machine_location, machine_name):
+    _ = machine_tester.create_machine(machine_location, machine_name)
+    assert machine_tester.no_error()
 
 
 @pytest.mark.parametrize(
-    "machine_location, machine_name",
-    [("123", "123"), ("wow", 123.0), (12, "John"), ("Location", 23)],
+    "machine_location, machine_name, err_value",
+    [
+        ("123", "123", "Location can not be a number."),
+        ("wow", 123.0, "Name can not be a number."),
+        (12, "John", "Location can not be a number."),
+        ("Location", 23, "Name can not be a number."),
+    ],
 )
-def test_create_machine_fail(tester, machine_location, machine_name):
-    create_response = tester.create_machine(machine_location, machine_name)
-    assert MachineTest.expect_error_from_response(
-        create_response, Machine.ERROR_CREATE_FAIL
+def test_create_machine_fail(machine_tester, machine_location, machine_name, err_value):
+    _ = machine_tester.create_machine(machine_location, machine_name)
+    assert machine_tester.expect_error(
+        expected_error=Machine.ERROR_CREATE_FAIL, value=err_value
     )
 
 
-def test_get_machine(tester):
+def test_get_machine(machine_tester):
     for machine_id in range(1, 11):
-        _ = tester.create_machine(f"location_{machine_id}", "some_name")
+        _ = machine_tester.create_machine(f"location_{machine_id}", "some_name")
+        assert machine_tester.no_error()
 
     # Make sure all can be found
     for search_machine_id in range(1, 11):
-        search_response = tester.find_machine(
-            f"location_{search_machine_id}", "some_name"
+        _ = machine_tester.find_machine(
+            location=f"location_{search_machine_id}", name="some_name"
         )
-        assert tester.no_error()
+        assert machine_tester.no_error()
 
     # Add 3 machines to some_location_1
     for i in range(3):
-        _ = tester.create_machine("some_location_1", f"some_name_{i}")
+        _ = machine_tester.create_machine("some_location_1", f"some_name_{i}")
+        machine_tester.no_error()
 
     # Add 8 machines to some_location_6
     for i in range(8):
-        _ = tester.create_machine("some_location_6", f"some_name_{i}")
+        _ = machine_tester.create_machine("some_location_6", f"some_name_{i}")
+        machine_tester.no_error()
 
     # Make sure we get all 3 machines added to some_location_1
-    search_response = tester.find_machine("some_location_1")
-    assert tester.no_error() and len(search_response.json) == 3
+    search_response = machine_tester.find_machine("some_location_1")
+    assert machine_tester.no_error() and len(search_response.json) == 3
 
     # Make sure we get all 8 machines added to some_location_1
-    search_response = tester.find_machine("some_location_6")
-    assert tester.no_error() and len(search_response.json) == 8
+    search_response = machine_tester.find_machine("some_location_6")
+    assert machine_tester.no_error() and len(search_response.json) == 8
 
 
-def test_get_machine_fail(tester):
-    search_response = tester.find_machine("some_location", "john")
-    assert MachineTest.expect_error_from_response(
-        search_response, Machine.ERROR_NOT_FOUND
+def test_get_machine_fail(machine_tester):
+    _ = machine_tester.find_machine("some_location", "john")
+    assert machine_tester.expect_error(
+        expected_error=Machine.ERROR_NOT_FOUND,
+        value="No machine found. (Location: some_location, Name: john)",
     )
 
 
-def test_add_product_to_machine(tester, client):
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
-    _ = tester.create_machine(location="some_location", name="some_name")
-    add_response = tester.add_product_to_machine(
+def test_add_product_to_machine(machine_tester, product_tester):
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
+
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(
         machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
     )
-    assert tester.no_error() and Log.make_from_response(
-        response=add_response
-    ).has_entry(broad="Product", specific="Product ID 1")
-
-    add_more_response = tester.add_product_to_machine(
-        machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
+    assert machine_tester.no_error() and machine_tester.log_has_entry(
+        broad="Product", specific="Product ID 1"
     )
 
-    assert tester.no_error() and Log.make_from_response(
-        response=add_more_response
-    ).has_entry(broad="Product", specific="Product ID 1")
+    _ = machine_tester.add_product_to_machine(
+        machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
+    )
+    assert machine_tester.no_error()
+    assert machine_tester.log_has_entry(broad="Product", specific="Product ID 1")
 
 
 @pytest.mark.parametrize(
@@ -170,70 +138,68 @@ def test_add_product_to_machine(tester, client):
     ],
 )
 def test_add_product_to_machine_fail(
-    tester, client, mid: int, json: Dict[str, Any], expected: str, value: str
+    machine_tester,
+    product_tester,
+    mid: int,
+    json: Dict[str, Any],
+    expected: str,
+    value: str,
 ):
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
-    _ = tester.create_machine(location="some_location", name="some_name")
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
 
-    add_response = tester.add_product_to_machine(machine_id=mid, json=json)
-    assert MachineTest.expect_error_from_response(
-        response=add_response, expected_error=expected, value=value
-    )
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(machine_id=mid, json=json)
+    assert machine_tester.expect_error(expected_error=expected, value=value)
 
 
-def test_get_machine_by_id(tester):
+def test_get_machine_by_id(machine_tester):
     machine_location = "some_location"
     machine_name = "some_name"
     machine_id = 1
-    _ = tester.create_machine(location=machine_location, name=machine_name)
+    _ = machine_tester.create_machine(location=machine_location, name=machine_name)
+    assert machine_tester.no_error()
 
-    get_response = tester.get_machine_by_id(machine_id)
-    assert (
-        tester.no_error()
-        and get_response.json.get("location") == machine_location
-        and get_response.json.get("machine_name") == machine_name
-        and get_response.json.get("machine_id") == machine_id
+    _ = machine_tester.get_machine_by_id(machine_id)
+    assert machine_tester.no_error()
+
+    assert machine_tester.response_has(
+        location=machine_location, machine_name=machine_name, machine_id=machine_id
     )
 
 
 @pytest.mark.parametrize("machine_id", [1, 2, 3, 4, 5])
-def test_get_machine_by_id_error(tester, machine_id):
-    get_response = tester.get_machine_by_id(machine_id=machine_id)
-    assert MachineTest.expect_error_from_response(get_response, Machine.ERROR_NOT_FOUND)
+def test_get_machine_by_id_error(machine_tester, machine_id):
+    _ = machine_tester.get_machine_by_id(machine_id=machine_id)
+    assert machine_tester.expect_error(
+        expected_error=Machine.ERROR_NOT_FOUND,
+        value=f"No machine with id {machine_id} found.",
+    )
 
 
-def test_edit_machine(tester, client):
+def test_edit_machine(machine_tester, product_tester):
     machine_location = "some_location"
     machine_name = "some_name"
     machine_id = 1
 
     # Add machine
-    create_response = tester.create_machine(
-        location=machine_location, name=machine_name
-    )
+    _ = machine_tester.create_machine(location=machine_location, name=machine_name)
+    assert machine_tester.no_error() and machine_tester.log_has_entry(broad="Machine")
 
-    assert tester.no_error() and Log.make_from_response(
-        response=create_response
-    ).has_entry(broad="Machine")
+    _ = machine_tester.get_machine_by_id(machine_id)
+    assert machine_tester.no_error()
 
-    get_response = tester.get_machine_by_id(machine_id)
-    print(get_response.json)
-    assert (
-        tester.no_error()
-        and get_response.json.get("machine_name") == "some_name"
-        and get_response.json.get("location") == "some_location"
+    assert machine_tester.response_has(
+        machine_name="some_name", location="some_location"
     )
 
     # Add product
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
 
-    _ = tester.edit_machine(
+    _ = machine_tester.edit_machine(
         machine_id=machine_id,
         json={
             "machine_name": "new_name",
@@ -243,21 +209,19 @@ def test_edit_machine(tester, client):
             ],
         },
     )
+    assert machine_tester.no_error()
 
-    assert tester.no_error()
-    get_updated_response = tester.get_machine_by_id(machine_id)
+    _ = machine_tester.get_machine_by_id(machine_id)
+    assert machine_tester.no_error()
 
-    assert (
-        tester.no_error()
-        and get_updated_response.json.get("machine_name") == "new_name"
-        and get_updated_response.json.get("location") == "new_location"
-        and len(get_updated_response.json.get("machine_products")) == 1
-    )
+    assert machine_tester.response_has(machine_name="new_name", location="new_location")
+
+    assert len(machine_tester.prev_response.json.get("machine_products")) == 1
 
 
-def test_edit_machine_error_not_found(tester):
+def test_edit_machine_error_not_found(machine_tester):
     # Machine not found
-    edit_response = tester.edit_machine(
+    _ = machine_tester.edit_machine(
         machine_id=123,
         json={
             "machine_name": "new_name",
@@ -267,102 +231,242 @@ def test_edit_machine_error_not_found(tester):
             ],
         },
     )
-
-    assert MachineTest.expect_error_from_response(
-        edit_response, Machine.ERROR_NOT_FOUND
-    )
-
-
-def test_edit_machine_error_invalid_json(tester):
-    # Invalid json
-    _ = tester.create_machine(location="some_location", name="some_name")
-
-    edit_response = tester.edit_machine(machine_id=1, json={})
-
-    assert MachineTest.expect_error_from_response(edit_response, "JSON Error")
-
-
-def test_get_all_machines(tester):
-    for i in range(5):
-        _ = tester.create_machine(location="some_location", name=f"some_name_{i}")
-    get_all_response = tester.get_all_machines()
-    assert tester.no_error() and len(get_all_response.json) == 5
-
-
-def test_get_all_machines_error_missing(tester):
-    get_all_response = tester.get_all_machines()
-    assert MachineTest.expect_error_from_response(
-        response=get_all_response, expected_error=Machine.ERROR_NOT_FOUND
-    )
-
-
-@pytest.mark.parametrize("payment", [100.00, 120.00, 1000])
-def test_buy_product_from_machine(tester, client, payment: int):
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
-    _ = tester.create_machine(location="some_location", name="some_name")
-
-    _ = tester.add_product_to_machine(
-        machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
-    )
-
-    buy_product_response = tester.buy_product_from_machine(
-        machine_id=1, product_id=1, json={"payment": payment}
-    )
-
-    assert tester.no_error() and buy_product_response.json.get("Change") == (
-        payment - 100.00
+    assert machine_tester.expect_error(
+        expected_error=Machine.ERROR_NOT_FOUND, value="No machine with id 123 found."
     )
 
 
 @pytest.mark.parametrize(
-    "mid, pid, payment_json, expected_error",
-    [(1, 1, {}, "JSON Error"), (2, 1, {"payment": 100}, Machine.ERROR_NOT_FOUND)],
+    "machine_id, json, expected_error, value",
+    [
+        (
+            123,
+            None,
+            Machine.ERROR_NOT_FOUND,
+            "No machine with id 123 found.",
+        ),  # Machine not found
+        (1, {}, "JSON Error", "Invalid JSON body."),  # Invalid JSON body
+        (
+            1,
+            {"machine_name": "some_name"},
+            Machine.ERROR_EDIT_FAIL,
+            "Name redundant, no changes made.",
+        ),
+        # Name redundant
+        (
+            1,
+            {"machine_name": 123},
+            Machine.ERROR_EDIT_FAIL,
+            "Name can not be numeric.",
+        ),  # Name numeric
+        (
+            1,
+            {"location": "some_location_2"},
+            Machine.ERROR_EDIT_FAIL,
+            "An existing machine with the name 'some_name' already exists at 'some_location_2'",
+        ),
+        # Clash with pre-existing machine
+        (
+            1,
+            {"location": 123},
+            Machine.ERROR_EDIT_FAIL,
+            "Location can not be numeric.",
+        ),  # Location numeric
+        (
+            1,
+            {"location": "some_location"},
+            Machine.ERROR_EDIT_FAIL,
+            "Location redundant, no changes made.",
+        ),
+        # Location redundant
+        (
+            1,
+            {"machine_name": None, "location": None, "stock_list": None},
+            Machine.ERROR_EDIT_FAIL,
+            "Nothing to edit.",
+        ),
+        # No edit info given
+        (
+            1,
+            {"machine_name": "taken_name", "location": "taken_location"},
+            Machine.ERROR_EDIT_FAIL,
+            "An existing machine with the name 'taken_name' already exists at 'taken_location'",
+        ),
+        # Clash with existing machine at location
+    ],
+)
+def test_edit_machine_error(
+    machine_tester,
+    machine_id: int,
+    json: Dict[str, Any],
+    expected_error: str,
+    value: str,
+):
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    _ = machine_tester.create_machine(location="some_location_2", name="some_name")
+    _ = machine_tester.create_machine(location="taken_location", name="taken_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.edit_machine(machine_id=machine_id, json=json)
+    assert machine_tester.expect_error(expected_error=expected_error, value=value)
+
+
+def test_get_all_machines(machine_tester):
+    for i in range(5):
+        _ = machine_tester.create_machine(
+            location="some_location", name=f"some_name_{i}"
+        )
+    _ = machine_tester.get_all_machines()
+    assert machine_tester.no_error() and len(machine_tester.prev_response.json) == 5
+
+
+def test_get_all_machines_error_missing(machine_tester):
+    _ = machine_tester.get_all_machines()
+    assert machine_tester.expect_error(
+        expected_error=Machine.ERROR_NOT_FOUND, value="There are no existing machines"
+    )
+
+
+@pytest.mark.parametrize("payment", [100.00, 120.00, 1000])
+def test_buy_product_from_machine(machine_tester, product_tester, payment: int):
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
+
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(
+        machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
+    )
+    assert machine_tester.no_error()
+
+    _ = machine_tester.buy_product_from_machine(
+        machine_id=1, product_id=1, json={"payment": payment}
+    )
+    assert machine_tester.no_error()
+
+    # Check payment success
+    assert machine_tester.log_has_entry(
+        broad="Transaction", specific="Success", value="Successfully bought product."
+    )
+
+    # Check correct change
+    assert machine_tester.log_has_entry(
+        broad="Transaction", specific="Change", value=str(float(payment) - 100.0)
+    )
+
+
+@pytest.mark.parametrize(
+    "mid, pid, payment_json, expected_error, value",
+    [
+        (1, 1, {}, "JSON Error", "Invalid JSON body."),  # Invalid JSON
+        (
+            2,
+            1,
+            {"payment": 100},
+            Machine.ERROR_NOT_FOUND,
+            "No machine with id 2 found.",
+        ),  # Machine not found
+        (
+            1,
+            1,
+            {"payment": None},
+            Machine.ERROR_PURCHASE_FAIL,
+            "No payment received.",
+        ),  # No payment given
+        (
+            1,
+            1,
+            {"payment": "foo"},
+            Machine.ERROR_PURCHASE_FAIL,
+            "Invalid payment type.",
+        ),  # Invalid payment
+        (
+            1,
+            2,
+            {"payment": 100},
+            Machine.ERROR_PURCHASE_FAIL,
+            "Product is out of stock.",
+        ),  # Out of stock
+        (
+            1,
+            1,
+            {"payment": 50},
+            Machine.ERROR_PURCHASE_FAIL,
+            "Not enough money, costs 100.0 Baht, got 50.0 Baht.",
+        ),
+        (
+            1,
+            3,
+            {"payment": 100},
+            Machine.ERROR_PURCHASE_FAIL,
+            "Product is not in stock.",
+        ),
+    ],
 )
 def test_buy_product_from_machine_error(
-    tester,
-    client,
+    machine_tester,
+    product_tester,
     mid: int,
     pid: int,
     payment_json: Dict[str, Any],
     expected_error: str,
+    value: str,
 ):
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
-    _ = tester.create_machine(location="some_location", name="some_name")
+    # Product 1
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
 
-    _ = tester.add_product_to_machine(
+    # Product 2
+    _ = product_tester.create_product(product_name="product_2", product_price=100.00)
+    assert product_tester.no_error()
+
+    # Machine 1
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    # Add product 1 (qt=10) to machine 1
+    _ = machine_tester.add_product_to_machine(
         machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
     )
+    assert machine_tester.no_error()
 
-    buy_product_response = tester.buy_product_from_machine(
+    # Add product 2 (qt=1) to machine 1
+    _ = machine_tester.add_product_to_machine(
+        machine_id=1, json={"stock_list": [{"product_id": 2, "quantity": 1}]}
+    )
+    assert machine_tester.no_error()
+
+    # Buy product 2 (qt=1) from machine 1
+    _ = machine_tester.buy_product_from_machine(
+        machine_id=1, product_id=2, json={"payment": 100}
+    )
+    assert machine_tester.no_error()
+
+    # Buy test
+    _ = machine_tester.buy_product_from_machine(
         machine_id=mid, product_id=pid, json=payment_json
     )
-
-    assert MachineTest.expect_error_from_response(
-        response=buy_product_response, expected_error=expected_error
-    )
+    assert machine_tester.expect_error(expected_error=expected_error, value=value)
 
 
-def test_remove_product_from_machine(tester, client):
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
-    _ = tester.create_machine(location="some_location", name="some_name")
+def test_remove_product_from_machine(machine_tester, product_tester):
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
 
-    _ = tester.add_product_to_machine(
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(
         machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
     )
+    assert machine_tester.no_error()
 
-    remove_response = tester.remove_product_from_machine(machine_id=1, product_id=1)
+    _ = machine_tester.remove_product_from_machine(machine_id=1, product_id=1)
 
-    log: Log = Log.make_from_response(remove_response)
-    assert tester.no_error() and log.has_entry(broad="Machine", specific="Machine ID 1")
+    assert machine_tester.no_error() and machine_tester.log_has_entry(
+        broad="Machine", specific="Machine ID 1"
+    )
 
 
 @pytest.mark.parametrize(
@@ -370,39 +474,37 @@ def test_remove_product_from_machine(tester, client):
     [(1, 2, Machine.ERROR_REMOVE_PRODUCT), (2, 1, Machine.ERROR_NOT_FOUND)],
 )
 def test_remove_product_from_machine_fail(
-    tester, client, mid: int, pid: int, expected_error: str
+    machine_tester, product_tester, mid: int, pid: int, expected_error: str
 ):
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "product_1", "product_price": 100.00},
-    )
-    _ = tester.create_machine(location="some_location", name="some_name")
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
 
-    _ = tester.add_product_to_machine(
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(
         machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
     )
+    assert machine_tester.no_error()
 
-    remove_response = tester.remove_product_from_machine(machine_id=mid, product_id=pid)
+    _ = machine_tester.remove_product_from_machine(machine_id=mid, product_id=pid)
 
-    assert MachineTest.expect_error_from_response(
-        response=remove_response, expected_error=expected_error
-    )
+    assert machine_tester.expect_error(expected_error=expected_error)
 
 
 @pytest.mark.parametrize("machines_count", [1, 2, 3, 120])
-def test_remove_machine(tester, machines_count: int):
+def test_remove_machine(machine_tester, machines_count: int):
     for machine_id in range(machines_count):
-        _ = tester.create_machine(
+        _ = machine_tester.create_machine(
             location="some_location", name=f"some_name_{machine_id}"
         )
+        assert machine_tester.no_error()
 
     for machine_id in range(machines_count):
-        _ = tester.remove_machine(machine_id=(machine_id + 1))
-        assert tester.no_error()
+        _ = machine_tester.remove_machine(machine_id=(machine_id + 1))
+        assert machine_tester.no_error()
 
 
-def test_remove_machine_error(tester):
-    remove_response = tester.remove_machine(machine_id=42)
-    assert MachineTest.expect_error_from_response(
-        response=remove_response, expected_error=Machine.ERROR_NOT_FOUND
-    )
+def test_remove_machine_error(machine_tester):
+    _ = machine_tester.remove_machine(machine_id=42)
+    assert machine_tester.expect_error(expected_error=Machine.ERROR_NOT_FOUND)

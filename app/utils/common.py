@@ -4,7 +4,7 @@ Commonly used aliases
 
 from app.utils.log import Log
 
-JSON_ERROR = Log().error("JSON Error", "Invalid JSON body")
+JSON_ERROR = Log().error("JSON Error", "Invalid JSON body.")
 
 
 def isnumber(s: str) -> bool:
