@@ -1,8 +1,63 @@
+from typing import Any, Dict, Optional
+
 import pytest
 
 from app.extensions import db
 from app.models.product import Product
 from app.utils.log import Log
+from tests.conftest import Tester, save_response
+
+
+class ProductTester(Tester):
+    @save_response
+    def create_product(
+        self, product_name: Optional[str] = None, product_price: Optional[float] = None
+    ):
+        create = "/product/create"
+        if product_name is None and product_price is None:
+            return self.client.post(create, json={})
+
+        return self.client.post(
+            create, json={"product_name": product_name, "product_price": product_price}
+        )
+
+    @save_response
+    def search_product(self, product_name: str):
+        return self.client.get(f"product/search/{product_name}")
+
+    @save_response
+    def get(self, product_id: int):
+        return self.client.get(f"/product/{product_id}")
+
+    @save_response
+    def edit_product(
+        self,
+        product_id: int,
+        new_name: Optional[str] = None,
+        new_price: Optional[float] = None,
+    ):
+        json: Dict[str, Any] = {}
+
+        if new_name:
+            json["product_name"] = new_name
+
+        if new_price:
+            json["product_price"] = new_price
+
+        return self.client.post(f"/product/{product_id}/edit", json=json)
+
+    @save_response
+    def get_all_machines(self):
+        return self.client.get("/product/all")
+
+    @save_response
+    def where_product(self, product_id: int):
+        return self.client.get(f"/product/{product_id}/where")
+
+
+@pytest.fixture
+def tester(client):
+    return ProductTester(client=client, prev_response=None)
 
 
 def expect_error(response, err: str = None):
@@ -17,233 +72,205 @@ def expect_error(response, err: str = None):
         {"product_name": "wow", "product_price": 256},
     ],
 )
-def test_product_creation(app, client, product_info):
+def test_product_creation(tester, product_info):
     product_name = product_info["product_name"]
     product_price = product_info["product_price"]
-    response = client.post(
-        "/product/create",
-        json={"product_name": product_name, "product_price": product_price},
+    _ = tester.create_product(product_name=product_name, product_price=product_price)
+
+    assert tester.no_error()
+
+    assert tester.log_has_entry(
+        broad="Product",
+        specific=f"New Product: {product_name}, {product_price}",
+        value=f"Successfully added product: [{product_name}, {float(product_price)}]",
     )
-    assert not Log.make_from_response(response=response).has_error()
-
-    log: Log = Log.make_from_response(response=response)
-    assert log.has_entry(
-        broad="Product", specific=f"New Product: {product_name}, {product_price}"
-    )
-
-    with app.app_context():
-        product: Product = db.session.get(Product, {"product_id": 1})
-        assert product is not None
-        assert product.product_name == product_name and float(
-            product.product_price
-        ) == float(product_price)
-
-        db.session.delete(product)
-        db.session.commit()
-
-        assert db.session.get(Product, {"product_id": 1}) is None
 
 
 @pytest.mark.parametrize(
-    "product_info",
+    "product_info, expected_err",
     [
-        {"product_name": 123, "product_price": 123.0},
-        {"product_name": "wow", "product_price": "what?"},
-        {"product_price": 123.0},
-        {"product_name": "name"},
-        {"product_name": "name", "product_price": -123.0},
+        ({"product_name": 123, "product_price": 123.0}, "The name cannot be a number."),
+        (
+            {"product_name": "wow", "product_price": "what?"},
+            "The price value is invalid. (Incorrect type, expected float, got=str)",
+        ),
+        ({"product_price": 123.0}, "Product name is missing."),
+        ({"product_name": "name"}, "Product price is missing."),
+        (
+            {"product_name": "name", "product_price": -123.0},
+            "Invalid price value. (price < 0.00)",
+        ),
+        (
+            {"product_name": "taken", "product_price": 100.0},
+            "A product with the given name already exists. (Product Name: taken)",
+        ),
     ],
 )
-def test_product_creation_error(app, client, product_info):
-    product_name = product_info.get("product_name")
-    product_price = product_info.get("product_price")
+def test_product_creation_error(tester, product_info, expected_err):
+    _ = tester.create_product(product_name="taken", product_price=100.0)
+    product_name: str | float | None = product_info.get("product_name")
+    product_price: float = product_info.get("product_price")
 
-    fail_response = client.post(
-        "/product/create",
-        json={"product_name": product_name, "product_price": product_price},
-    )
-
-    assert Log.make_from_response(response=fail_response).has_error(
-        Product.ERROR_CREATE_FAIL
+    _ = tester.create_product(product_name=product_name, product_price=product_price)
+    assert tester.expect_error(
+        expected_error=Product.ERROR_CREATE_FAIL, value=expected_err
     )
 
 
-def test_product_creation_duplicate_error(client):
-    product_name = "product_1"
-    product_price = 100.0
-
-    _ = client.post(
-        "/product/create",
-        json={"product_name": product_name, "product_price": product_price},
-    )
-
-    fail_response = client.post(
-        "/product/create",
-        json={"product_name": product_name, "product_price": product_price},
-    )
-
-    assert Log.make_from_response(response=fail_response).has_error(
-        Product.ERROR_CREATE_FAIL
-    )
+def test_product_creation_json_error(tester):
+    _ = tester.create_product()
+    assert tester.expect_error(expected_error="JSON Error", value="Invalid JSON body")
 
 
-def test_product_creation_json_error(app, client):
-    fail_response = client.post("/product/create", json={})
-    assert Log.make_from_response(response=fail_response).has_error("JSON Error")
-
-
-def test_search_product_1(app, client):
+def test_search_product_1(tester):
     product_name = "sample_name"
-    product_price = 100.00
-    response = client.post(
-        "/product/create",
-        json={"product_name": product_name, "product_price": product_price},
-    )
-    assert not Log.make_from_response(response=response).has_error()
+    product_price = 100.25
 
-    with app.app_context():
-        product: Product = db.session.get(Product, {"product_id": 1})
-        assert product is not None
+    _ = tester.create_product(product_name=product_name, product_price=product_price)
+    assert tester.no_error()
 
-    response = client.get(f"product/search/{product_name}")
-    response_json = response.json[0]
+    _ = tester.search_product(product_name=product_name)
+    assert tester.no_error()
 
-    assert (
-        response_json.get("product_id") == 1
-        and response_json.get("product_name") == str(product_name)
-        and response_json.get("product_price")[:-1] == str(product_price)
+    assert tester.response_has(
+        product_id=1, product_name=str(product_name), product_price=str(product_price)
     )
 
 
-def test_search_product_2(app, client):
-    _ = client.post(
-        "/product/create", json={"product_name": "product_1", "product_price": 100.00}
-    )
-    _ = client.post(
-        "/product/create", json={"product_name": "product_2", "product_price": 100.00}
-    )
+def test_search_product_2(tester):
+    _ = tester.create_product(product_name="product_1", product_price=100.00)
+    assert tester.no_error()
 
-    search_response = client.get("product/search/product")
+    _ = tester.create_product(product_name="product_2", product_price=100.00)
+    assert tester.no_error()
+
+    search_response = tester.search_product(product_name="product")
+    assert tester.no_error()
     assert len(search_response.json) == 2
 
-    _ = client.post(
-        "/product/create", json={"product_name": "product_3", "product_price": 100.00}
-    )
+    _ = tester.create_product(product_name="product_3", product_price=100.00)
+    assert tester.no_error()
 
-    search_response = client.get("product/search/product")
+    search_response = tester.search_product(product_name="product")
+    assert tester.no_error()
     assert len(search_response.json) == 3
 
 
-def test_search_product_not_found(app, client):
-    search_response = client.get("product/search/product")
-    log: Log = Log.make_from_response(response=search_response)
-    assert log.has_error(Product.ERROR_NOT_FOUND)
+@pytest.mark.parametrize(
+    "product_name",
+    ["product", "John", "Atlantis"],
+)
+def test_search_product_not_found(tester, product_name: str):
+    _ = tester.search_product(product_name=product_name)
+    assert tester.expect_error(
+        expected_error=Product.ERROR_NOT_FOUND,
+        value=f"Product not found. (Identifier: {product_name})",
+    )
 
 
-def test_get_product(app, client):
-    response = client.get("/product/1")
-    log: Log = Log.make_from_response(response=response)
-    assert log.has_error(specific=Product.ERROR_NOT_FOUND)
+def test_get_product(tester):
+    _ = tester.get(product_id=1)
+    assert tester.expect_error(
+        expected_error=Product.ERROR_NOT_FOUND,
+        value="Product not found. (Product ID: 1)",
+    )
 
     product_name = "sample_name"
-    product_price = 100.00
-    _ = client.post(
-        "/product/create",
-        json={"product_name": product_name, "product_price": product_price},
-    )
+    product_price = 100.25
 
-    response = client.get("/product/1")
-    response_json = response.json
-    log: Log = Log.make_from_response(response=response)
+    _ = tester.create_product(product_name=product_name, product_price=product_price)
+    tester.no_error()
 
-    assert not log.has_error()
-    assert (
-        response_json.get("product_id") == 1
-        and response_json.get("product_name") == str(product_name)
-        and response_json.get("product_price")[:-1] == str(product_price)
+    _ = tester.get(product_id=1)
+    assert tester.no_error()
+
+    assert tester.response_has(
+        product_id=1, product_name=str(product_name), product_price=str(product_price)
     )
 
 
-def test_edit_product(app, client):
+def test_edit_product(tester):
     original_name = "product_1"
-    original_price = 100.00
+    original_price = 100.25
     new_name = "new_product_1"
-    new_price = 200.0
+    new_price = 200.25
 
-    create_response = client.post(
-        "/product/create",
-        json={"product_name": original_name, "product_price": original_price},
+    _ = tester.create_product(product_name=original_name, product_price=original_price)
+    assert tester.no_error()
+
+    _ = tester.get(product_id=1)
+    assert tester.response_has(
+        product_id=1, product_name=str(original_name), product_price=str(original_price)
     )
 
-    assert not Log.make_from_response(response=create_response).has_error()
+    _ = tester.edit_product(product_id=1, new_name=new_name, new_price=new_price)
+    assert tester.no_error()
+    assert tester.log_has_entry(broad="Product", specific="Product ID 1")
 
-    response_json = client.get("/product/1").json
-
-    assert (
-        response_json.get("product_id") == 1
-        and response_json.get("product_name") == str(original_name)
-        and response_json.get("product_price")[:-1] == str(original_price)
-    )
-
-    edit_response = client.post(
-        "/product/1/edit", json={"product_name": new_name, "product_price": new_price}
-    )
-
-    edit_log: Log = Log.make_from_response(response=edit_response)
-
-    assert not edit_log.has_error()
-    assert edit_log.has_entry(broad="Product", specific="Product ID 1")
-
-    response_json = client.get("/product/1").json
-
-    assert (
-        response_json.get("product_id") == 1
-        and response_json.get("product_name") == str(new_name)
-        and response_json.get("product_price")[:-1] == str(new_price)
+    _ = tester.get(product_id=1)
+    assert tester.response_has(
+        product_id=1, product_name=str(new_name), product_price=str(new_price)
     )
 
 
-def test_edit_product_fail(app, client):
+@pytest.mark.parametrize(
+    "product_info, expected_err, value",
+    [
+        (
+            {"product_id": 3, "product_name": "new_name", "product_price": 0.25},
+            Product.ERROR_NOT_FOUND,
+            "Product not found. (Product ID: 3)",
+        ),
+        (
+            {"product_id": 1, "product_name": "some_name"},
+            Product.ERROR_EDIT_FAIL,
+            "Name redundant, no changes made.",
+        ),
+        (
+            {"product_id": 1, "product_price": 200.25},
+            Product.ERROR_EDIT_FAIL,
+            "Price redundant, no changes made.",
+        ),
+        (
+            {"product_id": 1, "product_name": None, "product_price": None},
+            "JSON Error",
+            "Invalid JSON body",
+        ),
+        (
+            {"product_id": 1, "product_name": 123},
+            Product.ERROR_EDIT_FAIL,
+            "The name cannot be a number.",
+        ),
+        (
+            {"product_id": 1, "product_name": "taken"},
+            Product.ERROR_EDIT_FAIL,
+            "An existing product with the name 'taken' already exists.",
+        ),
+        (
+            {"product_id": 1, "product_price": "john"},
+            Product.ERROR_EDIT_FAIL,
+            "The price value is invalid. (Incorrect type, expected float, got=str)",
+        ),
+    ],
+)
+def test_edit_product_fail(tester, product_info, expected_err, value):
+    _ = tester.create_product(product_name="some_name", product_price=200.25)
+    assert tester.no_error()
 
-    # Product not found
-    edit_response = client.post("/product/1/edit", json={})
-    assert expect_error(edit_response, Product.ERROR_NOT_FOUND)
+    _ = tester.create_product(product_name="taken", product_price=100.25)
+    assert tester.no_error()
 
-    original_name = "product_1"
-    original_price = 100.00
-    create_response = client.post(
-        "/product/create",
-        json={"product_name": original_name, "product_price": original_price},
+    _ = tester.edit_product(
+        product_id=product_info.get("product_id"),
+        new_name=product_info.get("product_name"),
+        new_price=product_info.get("product_price"),
     )
-    assert not expect_error(response=create_response)
+    assert tester.expect_error(expected_error=expected_err, value=value)
 
-    # Redundant name and price
-    edit_response = client.post(
-        "/product/1/edit",
-        json={"product_name": original_name, "product_price": original_price},
-    )
-    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
 
-    # Invalid JSON body
-    edit_response = client.post("/product/1/edit", json={})
-    assert expect_error(response=edit_response, err="JSON Error")
-
-    # Name can not be a number
-    edit_response = client.post("/product/1/edit", json={"product_name": 123})
-    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
-
-    # Name clash with another existing product
-    _ = client.post(
-        "/product/create",
-        json={"product_name": "taken_name", "product_price": 100.0},
-    )
-
-    edit_response = client.post("/product/1/edit", json={"product_name": "taken_name"})
-    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
-
-    # Invalid price data type
-    edit_response = client.post("/product/1/edit", json={"product_price": "john"})
-    assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
+def test_edit_product_fail_2(tester, client):
+    _ = tester.create_product(product_name="some_name", product_price=100.25)
+    tester.no_error()
 
     # Nothing to edit
     edit_response = client.post(
@@ -252,48 +279,44 @@ def test_edit_product_fail(app, client):
     assert expect_error(response=edit_response, err=Product.ERROR_EDIT_FAIL)
 
 
-def test_get_all_products(app, client):
+def test_get_all_products(tester):
+    # Add 10 products
     for product_num in range(10):
-        create_response = client.post(
-            "/product/create",
-            json={"product_name": f"product_{product_num}", "product_price": 100.0},
+        _ = tester.create_product(
+            product_name=f"product_{product_num}", product_price=100.25
         )
-        assert not Log.make_from_response(response=create_response).has_error()
+        assert tester.no_error()
 
-    get_all_response = client.get("/product/all")
-
+    # Get all 10 products
+    get_all_response = tester.get_all_machines()
     assert len(get_all_response.json) == 10
 
+    # Try getting each individual products
     for product_num in range(10):
-        get_response = client.get(f"/product/{product_num + 1}")
-        assert not Log.make_from_response(response=get_response).has_error()
+        _ = tester.get(product_id=product_num + 1)
+        assert tester.no_error()
 
 
-def test_get_all_products_fail(app, client):
-    get_all_response = client.get("/product/all")
-    assert Log.make_from_response(response=get_all_response).has_error(
-        Product.ERROR_NOT_FOUND
+def test_get_all_products_fail(tester):
+    _ = tester.get_all_machines()
+    assert tester.expect_error(
+        expected_error=Product.ERROR_NOT_FOUND, value="There are no existing products"
     )
 
 
-def test_get_machine_with_product(app, client):
+def test_get_machine_with_product(tester, app, client):
     from app.models.vending_machine_stock import MachineStock
 
     product_id = 1
-    create_response = client.post(
-        "/product/create",
-        json={"product_name": f"product_{product_id}", "product_price": 100.0},
-    )
-    assert not Log.make_from_response(response=create_response).has_error()
+    _ = tester.create_product(product_name=f"product_{product_id}", product_price=100.0)
+    assert tester.no_error()
 
     with app.app_context():
         for machine_id in range(10):
             create_machine_response = client.post(
                 f"machine/create/location_{machine_id}/John"
             )
-            assert not Log.make_from_response(
-                response=create_machine_response
-            ).has_error()
+            assert not Tester.expect_error_from_response(create_machine_response)
 
             stock, _ = MachineStock.make(
                 product_id=product_id, machine_id=machine_id + 1, quantity=10
@@ -303,7 +326,8 @@ def test_get_machine_with_product(app, client):
             db.session.add(stock)
         db.session.commit()
 
-    get_machines_response = client.get(f"/product/{product_id}/where")
+    get_machines_response = tester.where_product(product_id=product_id)
+    assert tester.no_error()
     assert len(get_machines_response.json) == 10
 
     for machine_id in range(10):
@@ -314,19 +338,20 @@ def test_get_machine_with_product(app, client):
         )
 
 
-def test_get_machine_with_product_fail(app, client):
+def test_get_machine_with_product_fail(tester, app, client):
     # product not found
-    not_found_response = client.get("/product/42/where")
-    assert Log.make_from_response(response=not_found_response).has_error(
-        Product.ERROR_NOT_FOUND
+    _ = tester.where_product(product_id=42)
+    assert tester.expect_error(
+        expected_error=Product.ERROR_NOT_FOUND,
+        value="Product not found. (Product ID: 42)",
     )
 
-    _ = client.post(
-        "/product/create", json={"product_name": "product_1", "product_price": 100.0}
-    )
+    _ = tester.create_product(product_name="product_1", product_price=100.0)
+    assert tester.no_error()
 
     # product not found in any machine
-    no_machine_response = client.get("/product/1/where")
-    assert Log.make_from_response(response=no_machine_response).has_error(
-        Product.ERROR_NOT_FOUND
+    _ = tester.where_product(product_id=1)
+    assert tester.expect_error(
+        expected_error=Product.ERROR_NOT_FOUND,
+        value="Product not found in any machine.",
     )
