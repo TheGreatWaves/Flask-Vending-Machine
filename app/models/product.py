@@ -136,7 +136,7 @@ class Product(db.Model):
 
             # Check redundancy
             if math.isclose(self.product_price, casted_new_price):
-                return Result.error("Price redundant, no changes made")
+                return Result.error("Price redundant, no changes made.")
 
             log = f"Price: { self.product_price } -> { casted_new_price }"
             self.product_price = casted_new_price
