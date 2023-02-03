@@ -7,6 +7,10 @@ from config import Config
 class AppTestConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = (
+        "mysql://root:vending_test_pass@127.0.0.1:13310/vending_test_db"
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
 @pytest.fixture()
