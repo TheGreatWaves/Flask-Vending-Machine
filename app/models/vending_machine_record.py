@@ -27,20 +27,36 @@ class StockRecord(db.Model):
     def make(product_id: int, machine_id: int) -> None:
         from app.models.vending_machine_stock import MachineStock
 
+        time_stamp = datetime.today().replace(microsecond=0)
         stock = db.session.get(
             MachineStock, {"product_id": product_id, "machine_id": machine_id}
         )
+        stock_record = db.session.get(
+            StockRecord,
+            {
+                "product_id": product_id,
+                "machine_id": machine_id,
+                "time_stamp": time_stamp,
+            },
+        )
 
-        if stock:
+        stock_exist = stock is not None
+        has_existing_stock_record = stock_record is not None
+
+        if stock_exist:
             quantity = stock.quantity
 
-            record = StockRecord(
-                product_id=product_id,
-                machine_id=machine_id,
-                time_stamp=datetime.now(),
-                quantity=quantity,
-            )
-            db.session.add(record)
+            if has_existing_stock_record:
+                # Update the quantity
+                stock_record.quantity = quantity
+            else:
+                new_record = StockRecord(
+                    product_id=product_id,
+                    machine_id=machine_id,
+                    time_stamp=time_stamp,
+                    quantity=quantity,
+                )
+                db.session.add(new_record)
             db.session.commit()
 
     @staticmethod
@@ -63,7 +79,6 @@ def take_snapshot(func):  # noqa: ANN001, ANN201
             product_id = self.product_id
 
         StockRecord.make(product_id=product_id, machine_id=self.machine_id)
-
         return result
 
     return wrapper

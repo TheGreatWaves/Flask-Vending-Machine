@@ -143,8 +143,8 @@ class MachineStock(db.Model):
         self.quantity -= 1
 
     @take_snapshot
-    def add_stock(self) -> None:
-        self.quantity += 1
+    def add_stock(self, amount: int = 1) -> None:
+        self.quantity += amount
 
     def out_of_stock(self) -> bool:
         return self.quantity == 0

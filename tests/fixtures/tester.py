@@ -57,6 +57,8 @@ def save_response(func):
 
 def response_has(response: TestResponse, **values):  # noqa: ANN003
     response_json = response.json
+
+    # If it is a list, we'll just check the head
     if isinstance(response.json, list):
         response_json = response_json[0]
 

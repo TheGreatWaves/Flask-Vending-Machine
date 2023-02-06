@@ -508,3 +508,66 @@ def test_remove_machine(machine_tester, machines_count: int):
 def test_remove_machine_error(machine_tester):
     _ = machine_tester.remove_machine(machine_id=42)
     assert machine_tester.expect_error(expected_error=Machine.ERROR_NOT_FOUND)
+
+
+def test_get_product_time_stamp_from_records(machine_tester, product_tester):
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
+
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(
+        machine_id=1, json={"stock_list": [{"product_id": 1, "quantity": 10}]}
+    )
+    assert machine_tester.no_error()
+
+    _ = machine_tester.get_product_time_stamp_from_records(1)
+    assert machine_tester.no_error()
+    assert machine_tester.response_has(machine_id=1, product_id=1, quantity=10)
+    assert len(machine_tester.prev_response.json) == 1
+
+
+def test_get_product_time_stamp_from_records_error(machine_tester):
+    from app.models.vending_machine_record import StockRecord
+
+    _ = machine_tester.get_product_time_stamp_from_records(1)
+    assert machine_tester.expect_error(
+        expected_error=StockRecord.ERROR_NOT_FOUND, value="Product not found"
+    )
+
+
+def test_get_machine_time_stamp_from_records(machine_tester, product_tester):
+    _ = product_tester.create_product(product_name="product_1", product_price=100.00)
+    assert product_tester.no_error()
+
+    _ = product_tester.create_product(product_name="product_2", product_price=100.00)
+    assert product_tester.no_error()
+
+    _ = machine_tester.create_machine(location="some_location", name="some_name")
+    assert machine_tester.no_error()
+
+    _ = machine_tester.add_product_to_machine(
+        machine_id=1,
+        json={
+            "stock_list": [
+                {"product_id": 1, "quantity": 100},
+                {"product_id": 2, "quantity": 10},
+            ]
+        },
+    )
+    assert machine_tester.no_error()
+
+    _ = machine_tester.get_machine_time_stamp_from_records(1)
+    assert machine_tester.no_error()
+    assert machine_tester.response_has(machine_id=1, product_id=1, quantity=100)
+    assert len(machine_tester.prev_response.json) == 2
+
+
+def test_get_machine_time_stamp_from_records_error(machine_tester):
+    from app.models.vending_machine_record import StockRecord
+
+    _ = machine_tester.get_machine_time_stamp_from_records(1)
+    assert machine_tester.expect_error(
+        expected_error=StockRecord.ERROR_NOT_FOUND, value="Machine not found"
+    )
