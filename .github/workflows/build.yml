@@ -12,7 +12,7 @@ on:
     types: [opened, synchronize, reopened]
 jobs:
   sonarcloud:
-    needs: test-and-coverage
+    needs: [test-and-coverage, lint]
     name: SonarCloud
     runs-on: ubuntu-latest
     steps:

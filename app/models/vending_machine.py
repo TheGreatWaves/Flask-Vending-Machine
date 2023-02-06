@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Union
 
 from app.extensions import db
+from app.models.vending_machine_record import take_snapshot
 from app.models.vending_machine_stock import MachineStock
 from app.utils import common
 from app.utils.log import Log
@@ -111,8 +112,8 @@ class Machine(db.Model):
 
         return None
 
+    @take_snapshot
     def add_product(self, product_id: int, quantity: int) -> Result:
-
         if not isinstance(quantity, int):
             return Result.error(
                 f"Invalid quantity type. Expect int, got={type(quantity).__name__}"
@@ -126,9 +127,12 @@ class Machine(db.Model):
             stock.quantity += quantity
             return Result(stock, f"Updated stock: {old_quantity} -> {stock.quantity}")
 
-        return MachineStock.make(
+        new_stock = MachineStock.make(
             machine_id=self.machine_id, product_id=product_id, quantity=quantity
         )
+        db.session.add(new_stock.object)
+        db.session.commit()
+        return new_stock
 
     # Returns the change log
     def _edit_name(self, new_name: str) -> Result:
@@ -218,8 +222,6 @@ class Machine(db.Model):
 
             if stock_info:
                 log.add("Product", f"Product ID {product_id}", message)
-                if stock_info.product is None:
-                    db.session.add(stock_info)
             else:
                 log.error(f"Product ID {product_id}", message)
 

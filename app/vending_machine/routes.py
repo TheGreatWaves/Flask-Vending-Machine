@@ -2,6 +2,7 @@ from flask import Response, jsonify, request
 
 from app.extensions import db
 from app.models.vending_machine import Machine
+from app.models.vending_machine_record import StockRecord
 from app.models.vending_machine_stock import MachineStock
 from app.utils import common
 from app.utils.log import Log
@@ -191,3 +192,19 @@ def remove_machine(machine_id: int) -> Response:
         return jsonify(Log().add("Machine", f"Machine ID {machine_id}", msg))
 
     return jsonify(Log().error(Machine.ERROR_NOT_FOUND, machine_not_found_msg))
+
+
+@bp.route("/product/<int:product_id>/records", methods=["GET"])
+def get_product_time_stamp_from_records(product_id: int) -> Response:
+    records = StockRecord.product_time_stamp_in_records(product_id)
+    if records:
+        return jsonify(records)
+    return jsonify(Log().error(StockRecord.ERROR_NOT_FOUND, "Product not found"))
+
+
+@bp.route("/<int:machine_id>/records", methods=["GET"])
+def get_machine_time_stamp_from_records(machine_id: int) -> Response:
+    records = StockRecord.machine_time_stamp_in_records(machine_id)
+    if records:
+        return jsonify(records)
+    return jsonify(Log().error(StockRecord.ERROR_NOT_FOUND, "Machine not found"))

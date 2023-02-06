@@ -47,3 +47,11 @@ class MachineTester(Tester):
     @save_response
     def remove_machine(self, machine_id: int):
         return self.client.post(f"/machine/{machine_id}/destroy")
+
+    @save_response
+    def get_product_time_stamp_from_records(self, product_id: int):
+        return self.client.get(f"/machine/product/{product_id}/records")
+
+    @save_response
+    def get_machine_time_stamp_from_records(self, machine_id: int):
+        return self.client.get(f"/machine/{machine_id}/records")

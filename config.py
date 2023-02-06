@@ -24,3 +24,6 @@ class Config:
         f"mysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # TODO: Remove me
+    WTF_CSRF_ENABLED = False

@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple, TypeAlias
 
 from app.extensions import db
 from app.models import product, vending_machine
+from app.models.vending_machine_record import take_snapshot
 from app.utils.result import Result
 
 """
@@ -44,9 +45,9 @@ class MachineStock(db.Model):
 
     @staticmethod
     def get(machine_id: int, product_id: int) -> OptStock:
-        return MachineStock.query.filter_by(
-            machine_id=machine_id, product_id=product_id
-        ).first()
+        return db.session.get(
+            MachineStock, {"machine_id": machine_id, "product_id": product_id}
+        )
 
     @staticmethod
     def make(machine_id: int, product_id: int, quantity: int) -> Result:
@@ -133,14 +134,17 @@ class MachineStock(db.Model):
 
         return stock_information_list
 
+    @take_snapshot
     def remove_from_machine(self) -> None:
-        db.session.delete(self)
+        self.quantity = 0
 
+    @take_snapshot
     def decrease_stock(self) -> None:
         self.quantity -= 1
 
-    def add_stock(self) -> None:
-        self.quantity += 1
+    @take_snapshot
+    def add_stock(self, amount: int = 1) -> None:
+        self.quantity += amount
 
     def out_of_stock(self) -> bool:
         return self.quantity == 0
