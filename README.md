@@ -184,3 +184,5 @@ pip install -r ./requirements.txt
       "product_name": "new_name",
       "product_price": 120.0
       ```
+      
+      :)
