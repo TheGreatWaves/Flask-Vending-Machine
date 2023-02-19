@@ -1,0 +1,279 @@
+openapi: "3.0.2"
+info:
+  title: API Title
+  version: "1.0"
+servers:
+  - url: https://api.server.test/v1
+tags:
+  - name: machine
+    description: Everything machine related
+  - name: product
+    description: Everything product related
+paths:
+  /machine/create/{location}/{name}:
+    post:
+      tags:
+        - machine
+      summary: Create new machine
+      description: Create machine with given name at location
+      parameters:
+        - in: path
+          name: location
+          schema:
+            type: string
+          required: true
+          description: Location to create the new machine
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: Name of the new machine
+      responses:
+        "200":
+          description: Ok
+
+  /machine/all:
+    get:
+      tags:
+        - machine
+      summary: Retrun the information of all existing machines
+      description: Return the information of all existing machines
+      responses:
+        "200":
+          description: Ok
+
+  /machine/at/{location}:
+    get:
+      tags:
+        - machine
+      summary: Get all machine information at location
+      description: Return the information of all machines at given location
+      parameters:
+        - in: path
+          name: location
+          schema:
+            type: string
+          required: true
+          description: Location of the machine
+      responses:
+        "200":
+          description: Ok
+
+  /machine/at/{location}/{name}:
+    get:
+      tags:
+        - machine
+      summary: Get specific machine information
+      description: Return the information of machine at given location with given name
+      parameters:
+        - in: path
+          name: location
+          schema:
+            type: string
+          required: true
+          description: Location of the machine
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: Name of the machine
+      responses:
+        "200":
+          description: Ok
+
+  /machine/{machine_id}:
+    get:
+      tags:
+        - machine
+      summary: Get specific machine information
+      description: Return the information of the machine with the given ID
+      parameters:
+        - in: path
+          name: machine_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the machine
+      responses:
+        "200":
+          description: Ok
+
+  /machine/{machine_id}/add:
+    post:
+      tags:
+        - machine
+      summary: Add product(s) to machine
+      description: Parses JSON product list and add all product(s) to machine
+      parameters:
+        - in: path
+          name: machine_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the machine
+      responses:
+        "200":
+          description: OK
+
+  /machine/{machine_id}/edit:
+    post:
+      tags:
+        - machine
+      summary: Edit machine information
+      description: Parses JSON indicating desired changes and apply them to the machine if applicable
+      parameters:
+        - in: path
+          name: machine_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the machine
+      responses:
+        "200":
+          description: OK
+
+  /machine/{machine_id}/destroy:
+    post:
+      tags:
+        - machine
+      summary: Destroy machine
+      description: Destroy the machine with the given ID
+      parameters:
+        - in: path
+          name: machine_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the machine
+      responses:
+        "200":
+          description: OK
+
+  /machine/{machine_id}/buy/{product_id}:
+    post:
+      tags:
+        - machine
+      summary: Buy product from machine
+      description: Buy the product with given product ID from the machine with given machine ID
+      parameters:
+        - in: path
+          name: machine_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the machine
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the product
+      responses:
+        "200":
+          description: OK
+
+  /machine/{machine_id}/remove/{product_id}:
+    post:
+      tags:
+        - machine
+      summary: Remove product from machine
+      description: Remove the product with given product ID from the machine with given machine ID
+      parameters:
+        - in: path
+          name: machine_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the machine
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          required: true
+          description: ID of the product
+      responses:
+        "200":
+          description: OK
+
+  /product/create:
+    post:
+      tags:
+        - product
+      summary: Add new product
+      description: Parses JSON for product information and creates a new product.
+      responses:
+        "200":
+          description: Ok
+
+  /product/search/{identifier}:
+    get:
+      tags:
+        - product
+      summary: Search for product
+      description: Given a product ID or product name, search for the product
+      responses:
+        "200":
+          description: Ok
+
+  /product/{product_id}:
+    get:
+      tags:
+        - product
+      summary: Get product information
+      description: Given product ID get product information
+      parameters:
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          description: ID of the product
+          required: true
+      responses:
+        "200":
+          description: Ok
+
+  /product/{product_id}/edit:
+    post:
+      tags:
+        - product
+      summary: Edit the product
+      description: Parses JSON indicating desired changes and apply them to the product if applicable
+      parameters:
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          description: ID of the product
+          required: true
+      responses:
+        "200":
+          description: Ok
+
+  /product/{product_id}/where:
+    get:
+      tags:
+        - product
+      summary: Get all machines that has the product
+      description: Given a product ID, find all machines will holds the product
+      parameters:
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          description: ID of the product
+          required: true
+      responses:
+        "200":
+          description: Ok
+
+  /product/all:
+    get:
+      tags:
+        - product
+      summary: Get information of all existing products
+      description: Get information of all existing products
+      responses:
+        "200":
+          description: Ok
