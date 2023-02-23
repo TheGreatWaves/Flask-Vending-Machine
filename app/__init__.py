@@ -9,10 +9,10 @@ from config import Config
 
 
 def create_app(config_class: Config = Config) -> Flask:
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='../static')
 
     # CSRF protection
-    csrf.init_app(app=app)
+    # csrf.init_app(app=app)
 
     # Load config over
     app.config.from_object(config_class)
@@ -24,10 +24,12 @@ def create_app(config_class: Config = Config) -> Flask:
     from app.main import bp as main_bp
     from app.product import bp as product_bp
     from app.vending_machine import bp as machine_bp
+    from app.extensions import swaggerui_blueprint as swag_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(machine_bp)
     app.register_blueprint(product_bp)
+    app.register_blueprint(swag_bp)
 
     return app
 
